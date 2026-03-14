@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
@@ -67,7 +67,7 @@ async def upload_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to upload image to Supabase: {str(e)}")
 
 @app.post("/submit-complaint")
-async def submit_complaint(complaint: schemas.ComplaintCreate):
+async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate):
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         
@@ -124,10 +124,12 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
             supabase.storage.from_("complaint-reports").upload(
                 pdf_filename, 
                 f, 
-                file_options={"content_type": "application/pdf", "upsert": "true"}
+                file_options={"content-type": "application/pdf", "upsert": "true"}
             )
             
-        pdf_url = supabase.storage.from_("complaint-reports").get_public_url(pdf_filename)
+        # Use our own download endpoint for the PDF URL to guarantee headers
+        base_url = str(request.base_url).rstrip('/')
+        pdf_url = f"{base_url}/download-complaint/{complaint_uuid}"
         
         # 4. Update complaint record with pdf_url
         supabase.table("complaints").update({"pdf_url": pdf_url}).eq("id", complaint_uuid).execute()

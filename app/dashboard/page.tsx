@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Search, Filter, Eye, LayoutGrid, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -64,10 +64,11 @@ interface Complaint {
   auto_generated_description?: string
   status: string
   date: string
+  pdf_url?: string
 }
 
-// Sample data matching the new complaint format
-const complaints: Complaint[] = [
+// Initial local sample data
+const sampleComplaints: Complaint[] = [
   {
     id: "CYB-A1B2C3",
     complainantName: "John Smith",
@@ -263,9 +264,68 @@ const statusColors: Record<string, string> = {
 }
 
 export default function DashboardPage() {
+  const [complaints, setComplaints] = useState<Complaint[]>(sampleComplaints)
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCrimeType, setSelectedCrimeType] = useState("All")
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchComplaints()
+  }, [])
+
+  const fetchComplaints = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/get-complaints`)
+      if (!response.ok) throw new Error("Failed to fetch")
+      const data = await response.json()
+      
+      // Map backend fields (snake_case) to frontend (camelCase)
+      const mapped: Complaint[] = data.map((item: any) => ({
+        id: item.id.substring(0, 8).toUpperCase(), // Shortened ID
+        realId: item.id,
+        complainantName: item.name,
+        complainantPhone: item.phone,
+        complainantEmail: item.email,
+        complainantAddress: item.address,
+        complainantCity: "N/A", // These might be combined in DB 'address'
+        complainantState: "",
+        complainantZip: "",
+        recipientName: "Cyber Cell",
+        recipientTitle: "",
+        recipientOrganization: "Local Police Station",
+        recipientAddress: "",
+        recipientCity: "",
+        recipientState: "",
+        recipientZip: "",
+        crimeType: item.crime_type,
+        incidentDate: item.incident_date || item.created_at,
+        incidentTime: "",
+        incidentLocation: "Online",
+        incidentDescription: item.description,
+        methodUsed: "N/A",
+        impact: "Pending Analysis",
+        accusedName: item.suspect_info || "Unknown",
+        accusedContact: "N/A",
+        accusedDetails: "",
+        evidenceDescription: "Attached Evidence",
+        ocr_text: item.ocr_text,
+        detected_urls: item.detected_urls,
+        detected_contacts: item.detected_contacts,
+        auto_generated_description: item.auto_generated_description,
+        status: item.status || "Under Review",
+        date: item.created_at,
+        pdf_url: item.pdf_url
+      }))
+      
+      setComplaints(mapped)
+    } catch (error) {
+      console.error("Dashboard Fetch Error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredComplaints = useMemo(() => {
     return complaints.filter((complaint) => {
@@ -282,6 +342,12 @@ export default function DashboardPage() {
   }, [searchQuery, selectedCrimeType])
 
   const handleDownload = async (complaint: Complaint) => {
+    // If backend provided a PDF URL, use it directly (it's proxied through our backend now)
+    if (complaint.pdf_url) {
+      window.open(complaint.pdf_url, "_blank", "noopener,noreferrer")
+      return
+    }
+
     setDownloadingId(complaint.id)
     try {
       await generateComplaintPDF({
@@ -378,7 +444,16 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredComplaints.length === 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-48 text-center bg-muted/5">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground font-medium">Fetching real-time complaints...</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredComplaints.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         No complaints found.
