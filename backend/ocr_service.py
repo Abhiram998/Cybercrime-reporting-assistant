@@ -1,6 +1,9 @@
 import pytesseract
 from PIL import Image
 import os
+from pillow_heif import register_heif_opener
+
+register_heif_opener()
 
 # Set tesseract path for Linux (Render) if needed
 if os.name == 'posix':

@@ -135,7 +135,8 @@ export default function DashboardPage() {
           status: c.status,
           date: c.created_at,
           description: c.description || "",
-          transactionId: c.transaction_id || "N/A"
+          transactionId: c.transaction_id || "N/A",
+          pdfUrl: c.pdf_url
         }))
         
         setComplaintsData(mappedData)
@@ -285,11 +286,20 @@ export default function DashboardPage() {
                                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
                                   <p className="text-foreground text-sm leading-relaxed">{complaint.description}</p>
                                 </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Transaction ID</h4>
-                                  <p className="text-foreground">{complaint.transactionId}</p>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Transaction ID</h4>
+                                    <p className="text-foreground">{complaint.transactionId}</p>
+                                  </div>
+                                  {complaint.pdfUrl && (
+                                    <div className="pt-4 border-t border-border">
+                                      <Button className="w-full flex items-center justify-center gap-2" asChild>
+                                        <a href={complaint.pdfUrl} target="_blank" rel="noopener noreferrer">
+                                          Download Professional PDF Report
+                                        </a>
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
                             </DialogContent>
                           </Dialog>
                         </TableCell>

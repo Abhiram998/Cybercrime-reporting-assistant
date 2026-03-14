@@ -114,7 +114,7 @@ async def get_complaints():
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         
     try:
-        response = supabase.table("complaints").select("id, name, crime_type, status, created_at").order("created_at", desc=True).execute()
+        response = supabase.table("complaints").select("id, name, crime_type, status, created_at, pdf_url").order("created_at", desc=True).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
