@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { FileText, Upload, X, AlertCircle, CheckCircle2 } from "lucide-react"
+import { FileText, Upload, X, AlertCircle, CheckCircle2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -94,7 +94,7 @@ export default function ReportPage() {
       }
 
       const data = await response.json();
-      setPdfUrl(data.download_url);
+      setPdfUrl(data.pdf_url || data.download_url); // Support both for safety
       setSubmitStatus("success")
       
       // Close any previous alerts and scroll to success message
@@ -147,10 +147,14 @@ export default function ReportPage() {
               Your complaint has been submitted successfully. 
               {pdfUrl && (
                 <div className="mt-4">
-                  <Button asChild variant="outline" size="sm" className="bg-accent text-accent-foreground border-accent hover:bg-accent/80">
-                    <a href={pdfUrl} download target="_blank" rel="noopener noreferrer">
-                      Download Complaint PDF
-                    </a>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-accent text-accent-foreground border-accent hover:bg-accent/80 flex items-center gap-2"
+                    onClick={() => window.open(pdfUrl, "_blank")}
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Complaint Report
                   </Button>
                 </div>
               )}

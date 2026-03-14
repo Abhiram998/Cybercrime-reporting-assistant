@@ -70,11 +70,9 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         
-    # 1. Store complaint data in Supabase database
-    complaint_data = complaint.dict()
-    # incident_date might need conversion if it's just a date string
-    
     try:
+        # 1. Store complaint data
+        complaint_data = complaint.dict()
         response = supabase.table("complaints").insert(complaint_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to insert complaint")
@@ -86,9 +84,9 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
         pdf_filename = f"complaint_{complaint_uuid}.pdf"
         local_pdf_path = os.path.join(TEMP_REPORT_DIR, pdf_filename)
         
-        # Prepare data for PDF including OCR text
         pdf_payload = complaint.dict()
         pdf_payload['complaint_id'] = complaint_uuid
+        # We need to ensure we have the correct data for PDF
         pdf_payload['ocr_text'] = db_complaint.get('ocr_text', '')
         pdf_payload['evidence_url'] = db_complaint.get('evidence_url', '')
         
@@ -110,7 +108,7 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
         return {
             "status": "Complaint Submitted",
             "complaint_id": complaint_uuid,
-            "download_url": pdf_url
+            "pdf_url": pdf_url
         }
     except Exception as e:
         print(f"Submission Error: {e}")
@@ -122,30 +120,34 @@ async def get_complaints():
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         
     try:
-        response = supabase.table("complaints").select("id, name, crime_type, status, created_at, pdf_url").order("created_at", desc=True).execute()
+        response = supabase.table("complaints").select("*").order("created_at", desc=True).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/download-complaint/{complaint_id}")
 async def download_complaint(complaint_id: str):
+    from fastapi.responses import Response
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         
     try:
-        response = supabase.table("complaints").select("pdf_url").eq("id", complaint_id).execute()
-        if not response.data or not response.data[0]['pdf_url']:
-            raise HTTPException(status_code=404, detail="Complaint or PDF not found")
-            
-        pdf_url = response.data[0]['pdf_url']
+        # Get PDF filename from database or follow format
+        pdf_filename = f"complaint_{complaint_id}.pdf"
         
-        # Return the URL. The browser will handle redirection if needed.
-        # Alternatively, we could return a RedirectResponse with headers.
-        return {
-            "download_url": pdf_url
-        }
+        # Download from Supabase Storage
+        file_data = supabase.storage.from_("complaint-reports").download(pdf_filename)
+        
+        return Response(
+            content=file_data,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{pdf_filename}\""
+            }
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Download Error: {e}")
+        raise HTTPException(status_code=404, detail="Complaint report PDF not found")
 
 if __name__ == "__main__":
     import uvicorn

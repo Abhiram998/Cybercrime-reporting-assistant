@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { Search, Filter, ChevronDown, Eye, LayoutGrid } from "lucide-react"
+import { Search, Filter, ChevronDown, Eye, LayoutGrid, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -292,10 +292,12 @@ export default function DashboardPage() {
                                   </div>
                                   {complaint.pdfUrl && (
                                     <div className="pt-4 border-t border-border">
-                                      <Button className="w-full flex items-center justify-center gap-2" asChild>
-                                        <a href={complaint.pdfUrl} target="_blank" rel="noopener noreferrer">
-                                          Download Professional PDF Report
-                                        </a>
+                                      <Button 
+                                        className="w-full flex items-center justify-center gap-2" 
+                                        onClick={() => window.open(complaint.pdfUrl, "_blank")}
+                                      >
+                                        <Download className="h-4 w-4" />
+                                        Download Complaint Report
                                       </Button>
                                     </div>
                                   )}
