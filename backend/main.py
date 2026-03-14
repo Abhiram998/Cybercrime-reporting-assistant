@@ -86,9 +86,13 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
         pdf_filename = f"complaint_{complaint_uuid}.pdf"
         local_pdf_path = os.path.join(TEMP_REPORT_DIR, pdf_filename)
         
-        pdf_data = complaint.dict()
-        pdf_data['complaint_id'] = complaint_uuid
-        pdf_generator.generate_pdf(pdf_data, local_pdf_path)
+        # Prepare data for PDF including OCR text
+        pdf_payload = complaint.dict()
+        pdf_payload['complaint_id'] = complaint_uuid
+        pdf_payload['ocr_text'] = db_complaint.get('ocr_text', '')
+        pdf_payload['evidence_url'] = db_complaint.get('evidence_url', '')
+        
+        pdf_generator.generate_pdf(pdf_payload, local_pdf_path)
         
         # 3. Upload PDF to Supabase Storage: complaint-reports
         with open(local_pdf_path, "rb") as f:
@@ -104,9 +108,9 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
         supabase.table("complaints").update({"pdf_url": pdf_url}).eq("id", complaint_uuid).execute()
         
         return {
-            "status": "success",
+            "status": "Complaint Submitted",
             "complaint_id": complaint_uuid,
-            "pdf_download_url": pdf_url
+            "download_url": pdf_url
         }
     except Exception as e:
         print(f"Submission Error: {e}")
@@ -133,7 +137,13 @@ async def download_complaint(complaint_id: str):
         if not response.data or not response.data[0]['pdf_url']:
             raise HTTPException(status_code=404, detail="Complaint or PDF not found")
             
-        return {"pdf_url": response.data[0]['pdf_url']}
+        pdf_url = response.data[0]['pdf_url']
+        
+        # Return the URL. The browser will handle redirection if needed.
+        # Alternatively, we could return a RedirectResponse with headers.
+        return {
+            "download_url": pdf_url
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

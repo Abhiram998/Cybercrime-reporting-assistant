@@ -94,13 +94,15 @@ export default function ReportPage() {
       }
 
       const data = await response.json();
-      setPdfUrl(data.pdf_download_url);
+      setPdfUrl(data.download_url);
       setSubmitStatus("success")
       
-      // Optionally reset form but keep PDF link
+      // Close any previous alerts and scroll to success message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error("Submission Error:", error);
       setSubmitStatus("error")
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false)
     }
