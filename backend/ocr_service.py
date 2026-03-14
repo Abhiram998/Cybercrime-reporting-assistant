@@ -1,15 +1,13 @@
-import easyocr
+import pytesseract
 import re
 import os
 from PIL import Image
 
-# Initialize the EasyOCR reader (English only for now)
-reader = easyocr.Reader(['en'])
-
 def extract_text_from_image(image_path: str) -> str:
     try:
-        results = reader.readtext(image_path, detail=0)
-        return " ".join(results).strip()
+        # Using pytesseract instead of easyocr to stay under 512MB RAM
+        text = pytesseract.image_to_string(Image.open(image_path))
+        return text.strip()
     except Exception as e:
         print(f"OCR Error: {e}")
         return ""
