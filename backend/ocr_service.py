@@ -2,13 +2,18 @@ import pytesseract
 from PIL import Image
 import os
 
-# You may need to set the tesseract path if it's not in your PATH
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Set tesseract path for Linux (Render) if needed
+if os.name == 'posix':
+    tesseract_linux_path = '/usr/bin/tesseract'
+    if os.path.exists(tesseract_linux_path):
+        pytesseract.pytesseract.tesseract_cmd = tesseract_linux_path
 
 def extract_text_from_image(image_path: str) -> str:
     try:
-        text = pytesseract.image_to_string(Image.open(image_path))
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img)
         return text.strip()
     except Exception as e:
-        print(f"OCR Error: {e}")
-        return "OCR processing failed or Tesseract not installed."
+        error_msg = f"OCR Error: {str(e)}"
+        print(error_msg)
+        return f"OCR processing failed. Error: {str(e)}"
