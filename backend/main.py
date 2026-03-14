@@ -71,9 +71,30 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         
     try:
-        # 1. Store complaint data
-        complaint_data = complaint.dict()
-        response = supabase.table("complaints").insert(complaint_data).execute()
+        # 1. Store complaint data - Map new fields to existing columns for compatibility
+        complaint_dict = complaint.dict()
+        
+        # Mapping new frontend fields to legacy backend columns
+        mapped_data = {
+            "name": complaint_dict.get("complainantName", complaint_dict.get("name")),
+            "phone": complaint_dict.get("complainantPhone", complaint_dict.get("phone")),
+            "email": complaint_dict.get("complainantEmail", complaint_dict.get("email")),
+            "address": complaint_dict.get("complainantAddress", complaint_dict.get("address")),
+            "crime_type": complaint_dict.get("crimeType", complaint_dict.get("crime_type")),
+            "description": complaint_dict.get("incidentDescription", complaint_dict.get("description")),
+            "incident_date": complaint_dict.get("incidentDate", complaint_dict.get("incident_date")),
+            "suspect_info": complaint_dict.get("accusedName", complaint_dict.get("suspect_info")),
+            "transaction_id": complaint_dict.get("transactionId", complaint_dict.get("transaction_id")),
+        }
+        
+        # Remove None values to avoid overwriting defaults
+        insert_data = {k: v for k, v in mapped_data.items() if v is not None}
+        
+        # Add a placeholder for status if not present
+        if "status" not in insert_data:
+            insert_data["status"] = "Pending"
+
+        response = supabase.table("complaints").insert(insert_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to insert complaint")
             

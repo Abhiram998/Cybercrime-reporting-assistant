@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Search, Filter, ChevronDown, Eye, LayoutGrid, Download } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Search, Filter, Eye, LayoutGrid, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -29,84 +29,193 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { generateComplaintPDF } from "@/lib/generate-pdf"
 
-// Sample data
+// Sample data matching the new complaint format
 const complaints = [
   {
-    id: "CYB-001",
-    name: "John Smith",
-    crimeType: "Online Fraud",
-    description: "Received a suspicious email claiming to be from my bank asking for login credentials. After entering details, my account was compromised.",
-    transactionId: "TXN-78945612",
+    id: "CYB-A1B2C3",
+    complainantName: "John Smith",
+    complainantPhone: "+1 555-123-4567",
+    complainantEmail: "john.smith@email.com",
+    complainantAddress: "123 Main Street",
+    complainantCity: "New York",
+    complainantState: "NY",
+    complainantZip: "10001",
+    recipientName: "Cyber Crime Cell",
+    recipientTitle: "Station House Officer",
+    recipientOrganization: "Cyber Crime Police Station",
+    recipientAddress: "100 Police Plaza",
+    recipientCity: "New York",
+    recipientState: "NY",
+    recipientZip: "10007",
+    crimeType: "Phishing",
+    incidentDate: "2024-03-10",
+    incidentTime: "14:30",
+    incidentLocation: "Online",
+    incidentDescription: "Received a suspicious email claiming to be from my bank asking for login credentials. After entering details on a fake website, my account was compromised and unauthorized transactions were made.",
+    methodUsed: "Fake email with a link to a phishing website that mimicked my bank's official website.",
+    impact: "Financial loss of $2,500 from unauthorized transactions. Personal banking information compromised.",
+    accusedName: "Unknown",
+    accusedContact: "spoofed@bank-security.fake",
+    accusedDetails: "Email originated from what appeared to be a legitimate bank domain but was actually a spoofed address.",
+    evidenceDescription: "Screenshots of phishing email, fake website, bank statements showing unauthorized transactions",
     status: "Under Review",
     date: "2024-03-10",
   },
   {
-    id: "CYB-002",
-    name: "Sarah Johnson",
-    crimeType: "Phishing",
-    description: "Clicked on a fake website link that looked like my company's login page. Personal information was stolen.",
-    transactionId: "N/A",
+    id: "CYB-D4E5F6",
+    complainantName: "Sarah Johnson",
+    complainantPhone: "+1 555-987-6543",
+    complainantEmail: "sarah.j@email.com",
+    complainantAddress: "456 Oak Avenue",
+    complainantCity: "Los Angeles",
+    complainantState: "CA",
+    complainantZip: "90001",
+    recipientName: "FBI Cyber Division",
+    recipientTitle: "Special Agent",
+    recipientOrganization: "Federal Bureau of Investigation",
+    recipientAddress: "11000 Wilshire Boulevard",
+    recipientCity: "Los Angeles",
+    recipientState: "CA",
+    recipientZip: "90024",
+    crimeType: "Identity Theft",
+    incidentDate: "2024-03-09",
+    incidentTime: "09:15",
+    incidentLocation: "Unknown - discovered via credit report",
+    incidentDescription: "Discovered that someone had opened multiple credit cards and a loan in my name without my authorization. Credit score dropped significantly.",
+    methodUsed: "Unknown how personal information was obtained. Possibly through a previous data breach.",
+    impact: "Credit score dropped by 150 points. $15,000 in fraudulent debt. Significant time spent disputing charges.",
+    accusedName: "Unknown",
+    accusedContact: "N/A",
+    accusedDetails: "No information available about the perpetrator.",
+    evidenceDescription: "Credit reports, fraudulent account statements, identity theft affidavit",
     status: "Investigating",
     date: "2024-03-09",
   },
   {
-    id: "CYB-003",
-    name: "Michael Brown",
-    crimeType: "Account Hacking",
-    description: "My social media accounts were hacked and used to send spam messages to my contacts.",
-    transactionId: "N/A",
+    id: "CYB-G7H8I9",
+    complainantName: "Michael Brown",
+    complainantPhone: "+1 555-456-7890",
+    complainantEmail: "m.brown@email.com",
+    complainantAddress: "789 Pine Street",
+    complainantCity: "Chicago",
+    complainantState: "IL",
+    complainantZip: "60601",
+    recipientName: "Chicago Police Department",
+    recipientTitle: "Cyber Crimes Unit",
+    recipientOrganization: "Chicago Police Department",
+    recipientAddress: "3510 S Michigan Ave",
+    recipientCity: "Chicago",
+    recipientState: "IL",
+    recipientZip: "60653",
+    crimeType: "Hacking",
+    incidentDate: "2024-03-08",
+    incidentTime: "22:00",
+    incidentLocation: "Personal Computer / Social Media",
+    incidentDescription: "My social media accounts were hacked and used to send spam and scam messages to all my contacts. The hacker also accessed my email and changed passwords.",
+    methodUsed: "Likely gained access through a compromised third-party application that had access to my accounts.",
+    impact: "Reputation damage, contacts received scam messages, lost access to accounts for 3 days.",
+    accusedName: "Unknown Hacker",
+    accusedContact: "IP address traced to overseas",
+    accusedDetails: "Hacker appeared to be operating from Eastern Europe based on login timestamps.",
+    evidenceDescription: "Login activity logs, screenshots of spam messages sent, recovery emails",
     status: "Resolved",
     date: "2024-03-08",
   },
   {
-    id: "CYB-004",
-    name: "Emily Davis",
+    id: "CYB-J1K2L3",
+    complainantName: "Emily Davis",
+    complainantPhone: "+1 555-321-0987",
+    complainantEmail: "emily.davis@email.com",
+    complainantAddress: "321 Elm Boulevard",
+    complainantCity: "Houston",
+    complainantState: "TX",
+    complainantZip: "77001",
+    recipientName: "Houston Police Department",
+    recipientTitle: "Detective",
+    recipientOrganization: "Cyber Crime Division",
+    recipientAddress: "1200 Travis St",
+    recipientCity: "Houston",
+    recipientState: "TX",
+    recipientZip: "77002",
     crimeType: "Digital Harassment",
-    description: "Receiving threatening messages from an unknown sender across multiple platforms.",
-    transactionId: "N/A",
+    incidentDate: "2024-03-07",
+    incidentTime: "Multiple times daily",
+    incidentLocation: "Multiple online platforms",
+    incidentDescription: "Receiving threatening and harassing messages from an unknown sender across multiple platforms including email, social media, and messaging apps.",
+    methodUsed: "Creating multiple fake accounts to continue harassment after being blocked.",
+    impact: "Severe emotional distress, anxiety, fear for personal safety.",
+    accusedName: "Unknown",
+    accusedContact: "Multiple fake social media handles",
+    accusedDetails: "Suspect may be someone known to the victim based on personal details mentioned in messages.",
+    evidenceDescription: "Screenshots of all threatening messages, timestamps, fake account profiles",
     status: "Under Review",
     date: "2024-03-07",
   },
   {
-    id: "CYB-005",
-    name: "Robert Wilson",
+    id: "CYB-M4N5O6",
+    complainantName: "Robert Wilson",
+    complainantPhone: "+1 555-654-3210",
+    complainantEmail: "r.wilson@email.com",
+    complainantAddress: "654 Maple Drive",
+    complainantCity: "Phoenix",
+    complainantState: "AZ",
+    complainantZip: "85001",
+    recipientName: "Arizona Attorney General",
+    recipientTitle: "Consumer Protection Division",
+    recipientOrganization: "Office of the Attorney General",
+    recipientAddress: "2005 N Central Ave",
+    recipientCity: "Phoenix",
+    recipientState: "AZ",
+    recipientZip: "85004",
     crimeType: "Financial Scam",
-    description: "Lost funds to an investment scam promising high returns through cryptocurrency.",
-    transactionId: "TXN-32165498",
+    incidentDate: "2024-03-06",
+    incidentTime: "16:45",
+    incidentLocation: "Online Investment Platform",
+    incidentDescription: "Lost significant funds to an investment scam promising high returns through cryptocurrency. The platform appeared legitimate but was fraudulent.",
+    methodUsed: "Fake investment website with fabricated testimonials and fake trading dashboard showing artificial gains.",
+    impact: "Financial loss of $25,000 in cryptocurrency investments. Unable to withdraw any funds.",
+    accusedName: "CryptoGains Platform",
+    accusedContact: "support@cryptogains-invest.com (now defunct)",
+    accusedDetails: "Website is now offline. Company claimed to be registered in Singapore but no records found.",
+    evidenceDescription: "Transaction records, website screenshots, communication with fake support, cryptocurrency wallet addresses",
     status: "Investigating",
     date: "2024-03-06",
   },
   {
-    id: "CYB-006",
-    name: "Lisa Anderson",
+    id: "CYB-P7Q8R9",
+    complainantName: "Lisa Anderson",
+    complainantPhone: "+1 555-789-0123",
+    complainantEmail: "lisa.anderson@email.com",
+    complainantAddress: "987 Cedar Lane",
+    complainantCity: "Seattle",
+    complainantState: "WA",
+    complainantZip: "98101",
+    recipientName: "Washington State Patrol",
+    recipientTitle: "Cyber Crime Unit",
+    recipientOrganization: "Washington State Patrol",
+    recipientAddress: "PO Box 42600",
+    recipientCity: "Olympia",
+    recipientState: "WA",
+    recipientZip: "98504",
     crimeType: "Online Fraud",
-    description: "Purchased items from a fraudulent e-commerce website that never delivered.",
-    transactionId: "TXN-65478932",
+    incidentDate: "2024-03-05",
+    incidentTime: "11:20",
+    incidentLocation: "Fraudulent E-commerce Website",
+    incidentDescription: "Purchased items from a fraudulent e-commerce website that appeared legitimate. Products were never delivered and the website has since disappeared.",
+    methodUsed: "Professional-looking fake online store with stolen product images and fake reviews.",
+    impact: "Financial loss of $450 for undelivered products. Credit card information potentially compromised.",
+    accusedName: "BestDeals-Online.shop",
+    accusedContact: "customerservice@bestdeals-online.shop",
+    accusedDetails: "Website used a recently registered domain. Payment was processed through a third-party processor.",
+    evidenceDescription: "Order confirmation, payment receipt, website screenshots via Wayback Machine, email correspondence",
     status: "Resolved",
     date: "2024-03-05",
   },
-  {
-    id: "CYB-007",
-    name: "David Martinez",
-    crimeType: "Phishing",
-    description: "Received a call from someone impersonating tech support and gained remote access to computer.",
-    transactionId: "N/A",
-    status: "Under Review",
-    date: "2024-03-04",
-  },
-  {
-    id: "CYB-008",
-    name: "Jennifer Taylor",
-    crimeType: "Account Hacking",
-    description: "Email account compromised and used to reset passwords for other services.",
-    transactionId: "N/A",
-    status: "Investigating",
-    date: "2024-03-03",
-  },
 ]
 
-const crimeTypes = ["All", "Online Fraud", "Phishing", "Account Hacking", "Digital Harassment", "Financial Scam"]
+const crimeTypes = ["All", "Hacking", "Phishing", "Identity Theft", "Online Fraud", "Financial Scam", "Digital Harassment", "Data Breach", "Ransomware Attack", "Social Engineering"]
 
 const statusColors: Record<string, string> = {
   "Under Review": "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
@@ -115,54 +224,59 @@ const statusColors: Record<string, string> = {
 }
 
 export default function DashboardPage() {
-  const [complaintsData, setComplaintsData] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCrimeType, setSelectedCrimeType] = useState("All")
-
-  useEffect(() => {
-    const fetchComplaints = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/get-complaints`)
-        if (!response.ok) throw new Error("Failed to fetch complaints")
-        const data = await response.json()
-        
-        // Map backend data to frontend structure
-        const mappedData = data.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          crimeType: c.crime_type,
-          status: c.status,
-          date: c.created_at,
-          description: c.description || "",
-          transactionId: c.transaction_id || "N/A",
-          pdfUrl: c.pdf_url
-        }))
-        
-        setComplaintsData(mappedData)
-      } catch (error) {
-        console.error("Fetch Error:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchComplaints()
-  }, [])
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const filteredComplaints = useMemo(() => {
-    return complaintsData.filter((complaint) => {
+    return complaints.filter((complaint) => {
       const matchesSearch =
-        complaint.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        complaint.complainantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         complaint.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        complaint.description.toLowerCase().includes(searchQuery.toLowerCase())
+        complaint.incidentDescription.toLowerCase().includes(searchQuery.toLowerCase())
       
       const matchesCrimeType =
         selectedCrimeType === "All" || complaint.crimeType === selectedCrimeType
 
       return matchesSearch && matchesCrimeType
     })
-  }, [searchQuery, selectedCrimeType, complaintsData])
+  }, [searchQuery, selectedCrimeType])
+
+  const handleDownload = async (complaint: typeof complaints[0]) => {
+    setDownloadingId(complaint.id)
+    try {
+      await generateComplaintPDF({
+        complainantName: complaint.complainantName,
+        complainantPhone: complaint.complainantPhone,
+        complainantEmail: complaint.complainantEmail,
+        complainantAddress: complaint.complainantAddress,
+        complainantCity: complaint.complainantCity,
+        complainantState: complaint.complainantState,
+        complainantZip: complaint.complainantZip,
+        recipientName: complaint.recipientName,
+        recipientTitle: complaint.recipientTitle,
+        recipientOrganization: complaint.recipientOrganization,
+        recipientAddress: complaint.recipientAddress,
+        recipientCity: complaint.recipientCity,
+        recipientState: complaint.recipientState,
+        recipientZip: complaint.recipientZip,
+        incidentDate: complaint.incidentDate,
+        incidentTime: complaint.incidentTime,
+        incidentLocation: complaint.incidentLocation,
+        crimeType: complaint.crimeType,
+        incidentDescription: complaint.incidentDescription,
+        methodUsed: complaint.methodUsed,
+        impact: complaint.impact,
+        accusedName: complaint.accusedName,
+        accusedContact: complaint.accusedContact,
+        accusedDetails: complaint.accusedDetails,
+        evidenceDescription: complaint.evidenceDescription,
+      }, complaint.id)
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+    }
+    setDownloadingId(null)
+  }
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -217,10 +331,9 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="font-semibold">Complaint ID</TableHead>
-                    <TableHead className="font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">Complainant</TableHead>
                     <TableHead className="font-semibold">Crime Type</TableHead>
-                    <TableHead className="font-semibold hidden md:table-cell">Description</TableHead>
-                    <TableHead className="font-semibold hidden lg:table-cell">Transaction ID</TableHead>
+                    <TableHead className="font-semibold hidden md:table-cell">Incident Date</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="font-semibold text-right">Actions</TableHead>
                   </TableRow>
@@ -228,7 +341,7 @@ export default function DashboardPage() {
                 <TableBody>
                   {filteredComplaints.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         No complaints found.
                       </TableCell>
                     </TableRow>
@@ -236,17 +349,14 @@ export default function DashboardPage() {
                     filteredComplaints.map((complaint) => (
                       <TableRow key={complaint.id} className="hover:bg-muted/30">
                         <TableCell className="font-medium text-primary">{complaint.id}</TableCell>
-                        <TableCell>{complaint.name}</TableCell>
+                        <TableCell>{complaint.complainantName}</TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="font-normal">
                             {complaint.crimeType}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground">
-                          {complaint.description}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell text-muted-foreground">
-                          {complaint.transactionId}
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {new Date(complaint.incidentDate).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[complaint.status]}`}>
@@ -254,56 +364,157 @@ export default function DashboardPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-lg">
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                  <span>Complaint {complaint.id}</span>
-                                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[complaint.status]}`}>
-                                    {complaint.status}
-                                  </span>
-                                </DialogTitle>
-                                <DialogDescription>
-                                  Submitted on {new Date(complaint.date).toLocaleDateString()}
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 pt-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Complainant</h4>
-                                  <p className="text-foreground">{complaint.name}</p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Crime Type</h4>
-                                  <Badge variant="secondary">{complaint.crimeType}</Badge>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
-                                  <p className="text-foreground text-sm leading-relaxed">{complaint.description}</p>
-                                </div>
-                                  <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Transaction ID</h4>
-                                    <p className="text-foreground">{complaint.transactionId}</p>
-                                  </div>
-                                  {complaint.pdfUrl && (
-                                    <div className="pt-4 border-t border-border">
-                                      <Button 
-                                        className="w-full flex items-center justify-center gap-2" 
-                                        onClick={() => window.open(complaint.pdfUrl, "_blank")}
-                                      >
-                                        <Download className="h-4 w-4" />
-                                        Download Complaint Report
-                                      </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    <span>Complaint {complaint.id}</span>
+                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[complaint.status]}`}>
+                                      {complaint.status}
+                                    </span>
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Submitted on {new Date(complaint.date).toLocaleDateString()}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-6 pt-4">
+                                  {/* Complainant Info */}
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-foreground">Complainant Information</h4>
+                                    <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Name</p>
+                                        <p className="text-foreground">{complaint.complainantName}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Phone</p>
+                                        <p className="text-foreground">{complaint.complainantPhone}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Email</p>
+                                        <p className="text-foreground">{complaint.complainantEmail}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Address</p>
+                                        <p className="text-foreground">{complaint.complainantAddress}, {complaint.complainantCity}, {complaint.complainantState} {complaint.complainantZip}</p>
+                                      </div>
                                     </div>
-                                  )}
+                                  </div>
+
+                                  {/* Recipient Info */}
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-foreground">Recipient Information</h4>
+                                    <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Name</p>
+                                        <p className="text-foreground">{complaint.recipientName}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Organization</p>
+                                        <p className="text-foreground">{complaint.recipientOrganization}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Incident Details */}
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-foreground">Incident Details</h4>
+                                    <div className="grid gap-3 sm:grid-cols-3 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Crime Type</p>
+                                        <Badge variant="secondary">{complaint.crimeType}</Badge>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Date</p>
+                                        <p className="text-foreground">{new Date(complaint.incidentDate).toLocaleDateString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Time</p>
+                                        <p className="text-foreground">{complaint.incidentTime}</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-sm">
+                                      <p className="text-muted-foreground">Description</p>
+                                      <p className="text-foreground leading-relaxed">{complaint.incidentDescription}</p>
+                                    </div>
+                                    <div className="text-sm">
+                                      <p className="text-muted-foreground">Methods Used</p>
+                                      <p className="text-foreground leading-relaxed">{complaint.methodUsed}</p>
+                                    </div>
+                                    <div className="text-sm">
+                                      <p className="text-muted-foreground">Impact</p>
+                                      <p className="text-foreground leading-relaxed">{complaint.impact}</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Accused Info */}
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-foreground">Accused Party Information</h4>
+                                    <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Name</p>
+                                        <p className="text-foreground">{complaint.accusedName}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Contact</p>
+                                        <p className="text-foreground">{complaint.accusedContact}</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-sm">
+                                      <p className="text-muted-foreground">Additional Details</p>
+                                      <p className="text-foreground leading-relaxed">{complaint.accusedDetails}</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Evidence */}
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-foreground">Evidence</h4>
+                                    <div className="text-sm">
+                                      <p className="text-foreground leading-relaxed">{complaint.evidenceDescription}</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Download Button */}
+                                  <Button
+                                    onClick={() => handleDownload(complaint)}
+                                    disabled={downloadingId === complaint.id}
+                                    className="w-full"
+                                  >
+                                    {downloadingId === complaint.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Generating PDF...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download Complaint Report
+                                      </>
+                                    )}
+                                  </Button>
                                 </div>
-                            </DialogContent>
-                          </Dialog>
+                              </DialogContent>
+                            </Dialog>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownload(complaint)}
+                              disabled={downloadingId === complaint.id}
+                            >
+                              {downloadingId === complaint.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

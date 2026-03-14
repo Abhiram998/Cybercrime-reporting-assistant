@@ -59,44 +59,30 @@ export default function UploadPage() {
   }
 
   const handleExtractText = async () => {
+    if (!file) return;
     setIsExtracting(true)
     
-    // Simulate OCR extraction (in a real app, this would call an OCR API)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    
-    // Sample extracted text based on "evidence"
-    const sampleTexts = [
-      `Transaction Receipt
-Date: March 10, 2024
-Amount: $1,250.00
-Reference: TXN-78945612
-Status: Completed
-Merchant: Unknown Vendor
-Warning: This transaction appears suspicious`,
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-      `From: security@bank-alert.com
-Subject: Urgent: Account Verification Required
-Date: March 9, 2024
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/upload-image`, {
+        method: "POST",
+        body: formData,
+      });
 
-Dear Customer,
+      if (!response.ok) {
+        throw new Error("Failed to extract text");
+      }
 
-Your account has been temporarily suspended.
-Please click the link below to verify your identity.
-Verification Link: http://suspicious-link.com/verify
-
-This message requires immediate action.`,
-
-      `Chat Log - Evidence Screenshot
-User1: Send the payment now
-User2: But this doesn't seem right...
-User1: Just do it, it's completely safe
-User2: The website looks different
-User1: Trust me, I've done this before
-[Timestamp: 14:32:05]`,
-    ]
-    
-    setExtractedText(sampleTexts[Math.floor(Math.random() * sampleTexts.length)])
-    setIsExtracting(false)
+      const data = await response.json();
+      setExtractedText(data.extracted_text);
+    } catch (error) {
+      console.error("OCR Error:", error);
+      setExtractedText("Error extracting text from image. Please try again.");
+    } finally {
+      setIsExtracting(false)
+    }
   }
 
   const copyToClipboard = async () => {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { FileText, Upload, X, AlertCircle, CheckCircle2, Download } from "lucide-react"
+import { FileText, Upload, X, AlertCircle, CheckCircle2, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,32 +15,101 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { generateComplaintPDF } from "@/lib/generate-pdf"
 
 const crimeTypes = [
-  "Online Fraud",
+  "Hacking",
   "Phishing",
-  "Account Hacking",
-  "Digital Harassment",
+  "Identity Theft",
+  "Online Fraud",
   "Financial Scam",
+  "Digital Harassment",
+  "Data Breach",
+  "Ransomware Attack",
+  "Social Engineering",
+  "Other",
 ]
 
+interface FormData {
+  // Complainant Information
+  complainantName: string
+  complainantPhone: string
+  complainantEmail: string
+  complainantAddress: string
+  complainantCity: string
+  complainantState: string
+  complainantZip: string
+  
+  // Recipient Information
+  recipientName: string
+  recipientTitle: string
+  recipientOrganization: string
+  recipientAddress: string
+  recipientCity: string
+  recipientState: string
+  recipientZip: string
+  
+  // Incident Details
+  incidentDate: string
+  incidentTime: string
+  incidentLocation: string
+  crimeType: string
+  incidentDescription: string
+  methodUsed: string
+  impact: string
+  
+  // Accused Information
+  accusedName: string
+  accusedContact: string
+  accusedDetails: string
+  
+  // Evidence
+  evidenceDescription: string
+}
+
+interface SubmissionResult {
+  complaintId: string
+  crimeType: string
+  date: string
+  formData: FormData
+}
+
 export default function ReportPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
+  const [formData, setFormData] = useState<FormData>({
+    complainantName: "",
+    complainantPhone: "",
+    complainantEmail: "",
+    complainantAddress: "",
+    complainantCity: "",
+    complainantState: "",
+    complainantZip: "",
+    recipientName: "",
+    recipientTitle: "",
+    recipientOrganization: "",
+    recipientAddress: "",
+    recipientCity: "",
+    recipientState: "",
+    recipientZip: "",
+    incidentDate: "",
+    incidentTime: "",
+    incidentLocation: "",
     crimeType: "",
-    description: "",
-    suspectInfo: "",
-    transactionId: "",
-    incident_date: new Date().toISOString().split('T')[0],
+    incidentDescription: "",
+    methodUsed: "",
+    impact: "",
+    accusedName: "",
+    accusedContact: "",
+    accusedDetails: "",
+    evidenceDescription: "",
   })
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null)
+  const [backendPdfUrl, setBackendPdfUrl] = useState<string | null>(null)
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -50,25 +119,29 @@ export default function ReportPage() {
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      setFile(selectedFile)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreview(reader.result as string)
-      }
-      reader.readAsDataURL(selectedFile)
+    const selectedFiles = Array.from(e.target.files || [])
+    if (selectedFiles.length > 0) {
+      setFiles((prev) => [...prev, ...selectedFiles])
+      
+      selectedFiles.forEach((file) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setPreviews((prev) => [...prev, reader.result as string])
+        }
+        reader.readAsDataURL(file)
+      })
     }
   }
 
-  const removeFile = () => {
-    setFile(null)
-    setPreview(null)
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+    setPreviews((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitStatus("idle")
     
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/submit-complaint`, {
@@ -76,17 +149,7 @@ export default function ReportPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: formData.name,
-          phone: formData.phone,
-          email: formData.email,
-          address: formData.address,
-          crime_type: formData.crimeType,
-          description: formData.description,
-          suspect_info: formData.suspectInfo,
-          transaction_id: formData.transactionId,
-          incident_date: formData.incident_date,
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -94,73 +157,159 @@ export default function ReportPage() {
       }
 
       const data = await response.json();
-      setPdfUrl(data.pdf_url || data.download_url); // Support both for safety
-      setSubmitStatus("success")
       
-      // Close any previous alerts and scroll to success message
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setSubmissionResult({
+        complaintId: data.complaint_id,
+        crimeType: formData.crimeType,
+        date: new Date().toISOString().split("T")[0],
+        formData,
+      })
+      
+      // Store the backend PDF URL if available
+      if (data.pdf_url) {
+        setBackendPdfUrl(data.pdf_url);
+      }
+      
+      setSubmitStatus("success")
     } catch (error) {
       console.error("Submission Error:", error);
       setSubmitStatus("error")
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const handleDownloadPDF = async () => {
+    if (!submissionResult) return
+    
+    // If backend provided a PDF URL, use it
+    if (backendPdfUrl) {
+      window.open(backendPdfUrl, "_blank", "noopener,noreferrer")
+      return
+    }
+
+    setIsDownloading(true)
+    
+    try {
+      await generateComplaintPDF(submissionResult.formData, submissionResult.complaintId)
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+    }
+    
+    setIsDownloading(false)
+  }
+
   const handleReset = () => {
     setFormData({
-      name: "",
-      phone: "",
-      email: "",
-      address: "",
+      complainantName: "",
+      complainantPhone: "",
+      complainantEmail: "",
+      complainantAddress: "",
+      complainantCity: "",
+      complainantState: "",
+      complainantZip: "",
+      recipientName: "",
+      recipientTitle: "",
+      recipientOrganization: "",
+      recipientAddress: "",
+      recipientCity: "",
+      recipientState: "",
+      recipientZip: "",
+      incidentDate: "",
+      incidentTime: "",
+      incidentLocation: "",
       crimeType: "",
-      description: "",
-      suspectInfo: "",
-      transactionId: "",
-      incident_date: new Date().toISOString().split('T')[0],
+      incidentDescription: "",
+      methodUsed: "",
+      impact: "",
+      accusedName: "",
+      accusedContact: "",
+      accusedDetails: "",
+      evidenceDescription: "",
     })
-    setFile(null)
-    setPreview(null)
+    setFiles([])
+    setPreviews([])
     setSubmitStatus("idle")
-    setPdfUrl(null)
+    setSubmissionResult(null)
+  }
+
+  if (submitStatus === "success" && submissionResult) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="mx-auto max-w-2xl">
+          <Card className="border-accent/50 bg-accent/5">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/20">
+                <CheckCircle2 className="h-8 w-8 text-accent" />
+              </div>
+              <CardTitle className="text-2xl text-accent">Complaint Submitted Successfully</CardTitle>
+              <CardDescription className="text-base">
+                Your complaint report has been generated. Download the official complaint letter below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="rounded-lg border border-border bg-card p-6">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Complaint ID</p>
+                    <p className="font-semibold text-primary">{submissionResult.complaintId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Crime Type</p>
+                    <p className="font-semibold">{submissionResult.crimeType}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date</p>
+                    <p className="font-semibold">{new Date(submissionResult.date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="w-full"
+                size="lg"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-5 w-5" />
+                    Download Complaint Report
+                  </>
+                )}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="w-full"
+              >
+                Submit Another Complaint
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-3xl">
         <div className="mb-8 text-center">
           <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <FileText className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-foreground">Report a Complaint</h1>
+          <h1 className="mb-2 text-3xl font-bold text-foreground">Report a Cybercrime Complaint</h1>
           <p className="text-muted-foreground">
-            Fill out the form below to submit your cybercrime complaint.
+            Fill out the form below to submit your official cybercrime complaint letter.
           </p>
         </div>
-
-        {submitStatus === "success" && (
-          <Alert className="mb-6 border-accent bg-accent/10">
-            <CheckCircle2 className="h-4 w-4 text-accent" />
-            <AlertTitle className="text-accent">Success!</AlertTitle>
-            <AlertDescription className="text-accent/80">
-              Your complaint has been submitted successfully. 
-              {pdfUrl && (
-                <div className="mt-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="bg-accent text-accent-foreground border-accent hover:bg-accent/80 flex items-center gap-2"
-                    onClick={() => window.open(pdfUrl, "_blank")}
-                  >
-                    <Download className="h-4 w-4" />
-                    Download Complaint Report
-                  </Button>
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
 
         {submitStatus === "error" && (
           <Alert className="mb-6 border-destructive bg-destructive/10">
@@ -174,136 +323,361 @@ export default function ReportPage() {
 
         <Card className="border-border/50">
           <CardHeader>
-            <CardTitle>Complaint Details</CardTitle>
+            <CardTitle>Cyber Crime Complaint Letter</CardTitle>
             <CardDescription>
-              Provide as much detail as possible to help us investigate your case.
+              This form follows the official cyber crime complaint letter format.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Complainant Information */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Your Information (Complainant)</h3>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    placeholder="Enter your phone number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                  />
+                <Separator />
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="complainantName">Full Name *</Label>
+                    <Input
+                      id="complainantName"
+                      name="complainantName"
+                      placeholder="Your full name"
+                      value={formData.complainantName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="complainantPhone">Phone Number *</Label>
+                    <Input
+                      id="complainantPhone"
+                      name="complainantPhone"
+                      placeholder="Your phone number"
+                      value={formData.complainantPhone}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="complainantEmail">Email Address *</Label>
                   <Input
-                    id="email"
-                    name="email"
+                    id="complainantEmail"
+                    name="complainantEmail"
                     type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
+                    placeholder="Your email address"
+                    value={formData.complainantEmail}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="incident_date">Incident Date</Label>
+                  <Label htmlFor="complainantAddress">Street Address *</Label>
                   <Input
-                    id="incident_date"
-                    name="incident_date"
-                    type="date"
-                    value={formData.incident_date}
+                    id="complainantAddress"
+                    name="complainantAddress"
+                    placeholder="Your street address"
+                    value={formData.complainantAddress}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="complainantCity">City *</Label>
+                    <Input
+                      id="complainantCity"
+                      name="complainantCity"
+                      placeholder="City"
+                      value={formData.complainantCity}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="complainantState">State *</Label>
+                    <Input
+                      id="complainantState"
+                      name="complainantState"
+                      placeholder="State"
+                      value={formData.complainantState}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="complainantZip">ZIP Code *</Label>
+                    <Input
+                      id="complainantZip"
+                      name="complainantZip"
+                      placeholder="ZIP Code"
+                      value={formData.complainantZip}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipient Information */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Recipient Information</h3>
+                </div>
+                <Separator />
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientName">Recipient Name *</Label>
+                    <Input
+                      id="recipientName"
+                      name="recipientName"
+                      placeholder="e.g., Cyber Crime Cell"
+                      value={formData.recipientName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientTitle">Title/Position</Label>
+                    <Input
+                      id="recipientTitle"
+                      name="recipientTitle"
+                      placeholder="e.g., Station House Officer"
+                      value={formData.recipientTitle}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recipientOrganization">Organization *</Label>
+                  <Input
+                    id="recipientOrganization"
+                    name="recipientOrganization"
+                    placeholder="e.g., Cyber Crime Police Station"
+                    value={formData.recipientOrganization}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recipientAddress">Street Address</Label>
+                  <Input
+                    id="recipientAddress"
+                    name="recipientAddress"
+                    placeholder="Recipient street address"
+                    value={formData.recipientAddress}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientCity">City</Label>
+                    <Input
+                      id="recipientCity"
+                      name="recipientCity"
+                      placeholder="City"
+                      value={formData.recipientCity}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientState">State</Label>
+                    <Input
+                      id="recipientState"
+                      name="recipientState"
+                      placeholder="State"
+                      value={formData.recipientState}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientZip">ZIP Code</Label>
+                    <Input
+                      id="recipientZip"
+                      name="recipientZip"
+                      placeholder="ZIP Code"
+                      value={formData.recipientZip}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Incident Details */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Incident Details</h3>
+                </div>
+                <Separator />
+                
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="incidentDate">Date of Incident *</Label>
+                    <Input
+                      id="incidentDate"
+                      name="incidentDate"
+                      type="date"
+                      value={formData.incidentDate}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="incidentTime">Time of Incident</Label>
+                    <Input
+                      id="incidentTime"
+                      name="incidentTime"
+                      type="time"
+                      value={formData.incidentTime}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="incidentLocation">Location</Label>
+                    <Input
+                      id="incidentLocation"
+                      name="incidentLocation"
+                      placeholder="e.g., Online, Home"
+                      value={formData.incidentLocation}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="crimeType">Nature of Cyber Crime *</Label>
+                  <Select
+                    value={formData.crimeType}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, crimeType: value }))
+                    }
+                    required
+                  >
+                    <SelectTrigger id="crimeType">
+                      <SelectValue placeholder="Select crime type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {crimeTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="incidentDescription">Description of Incident *</Label>
+                  <Textarea
+                    id="incidentDescription"
+                    name="incidentDescription"
+                    placeholder="Provide a detailed account of the cyber crime incident..."
+                    rows={5}
+                    value={formData.incidentDescription}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="methodUsed">Methods Used by Perpetrators</Label>
+                  <Textarea
+                    id="methodUsed"
+                    name="methodUsed"
+                    placeholder="Describe how the incident occurred and the methods used..."
+                    rows={3}
+                    value={formData.methodUsed}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="impact">Impact and Consequences *</Label>
+                  <Textarea
+                    id="impact"
+                    name="impact"
+                    placeholder="Describe the impact (e.g., financial losses, data breaches, personal harm)..."
+                    rows={3}
+                    value={formData.impact}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  placeholder="Enter your address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                />
+              {/* Accused Information */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Accused Party Information (If Known)</h3>
+                </div>
+                <Separator />
+                
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="accusedName">Name</Label>
+                    <Input
+                      id="accusedName"
+                      name="accusedName"
+                      placeholder="Name of accused (if known)"
+                      value={formData.accusedName}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="accusedContact">Contact Information</Label>
+                    <Input
+                      id="accusedContact"
+                      name="accusedContact"
+                      placeholder="Phone, email, or online handle"
+                      value={formData.accusedContact}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accusedDetails">Additional Details</Label>
+                  <Textarea
+                    id="accusedDetails"
+                    name="accusedDetails"
+                    placeholder="Any other relevant details about the accused..."
+                    rows={3}
+                    value={formData.accusedDetails}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="crimeType">Crime Type</Label>
-                <Select
-                  value={formData.crimeType}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, crimeType: value }))
-                  }
-                  required
-                >
-                  <SelectTrigger id="crimeType">
-                    <SelectValue placeholder="Select crime type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {crimeTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Evidence */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Evidence and Documentation</h3>
+                </div>
+                <Separator />
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Describe the incident in detail..."
-                  rows={5}
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="evidenceDescription">Description of Evidence</Label>
+                  <Textarea
+                    id="evidenceDescription"
+                    name="evidenceDescription"
+                    placeholder="List any evidence you have (screenshots, emails, transaction records, log files, etc.)..."
+                    rows={3}
+                    value={formData.evidenceDescription}
+                    onChange={handleInputChange}
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="suspectInfo">Suspect Information (if known)</Label>
-                <Input
-                  id="suspectInfo"
-                  name="suspectInfo"
-                  placeholder="Any information about the suspect"
-                  value={formData.suspectInfo}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="transactionId">Transaction ID (if applicable)</Label>
-                <Input
-                  id="transactionId"
-                  name="transactionId"
-                  placeholder="Transaction or reference ID"
-                  value={formData.transactionId}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Upload Evidence</Label>
-                {!preview ? (
+                <div className="space-y-2">
+                  <Label>Upload Evidence Files</Label>
                   <div className="flex items-center justify-center w-full">
                     <label
                       htmlFor="evidence"
@@ -314,36 +688,49 @@ export default function ReportPage() {
                         <p className="text-sm text-muted-foreground">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p className="text-xs text-muted-foreground">PNG, JPG or GIF</p>
+                        <p className="text-xs text-muted-foreground">Screenshots, PDFs, or other evidence files</p>
                       </div>
                       <input
                         id="evidence"
                         type="file"
                         className="hidden"
-                        accept="image/*"
+                        accept="image/*,.pdf,.doc,.docx,.txt"
+                        multiple
                         onChange={handleFileChange}
                       />
                     </label>
                   </div>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={preview}
-                      alt="Evidence preview"
-                      className="w-full h-48 object-cover rounded-lg border border-border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8"
-                      onClick={removeFile}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <p className="mt-2 text-sm text-muted-foreground">{file?.name}</p>
-                  </div>
-                )}
+
+                  {previews.length > 0 && (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-4">
+                      {previews.map((preview, index) => (
+                        <div key={index} className="relative">
+                          {files[index]?.type.startsWith("image/") ? (
+                            <img
+                              src={preview}
+                              alt={`Evidence ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border border-border"
+                            />
+                          ) : (
+                            <div className="w-full h-32 flex items-center justify-center rounded-lg border border-border bg-secondary/30">
+                              <FileText className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 h-6 w-6"
+                            onClick={() => removeFile(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                          <p className="mt-1 text-xs text-muted-foreground truncate">{files[index]?.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-4 pt-4">
@@ -352,7 +739,14 @@ export default function ReportPage() {
                   className="flex-1"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Complaint"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Complaint"
+                  )}
                 </Button>
                 <Button
                   type="button"

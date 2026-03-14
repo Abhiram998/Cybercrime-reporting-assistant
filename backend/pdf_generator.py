@@ -56,10 +56,21 @@ def generate_pdf(data: dict, output_path: str):
     elements = []
     
     # 1. Header (Right Aligned User Info)
-    elements.append(Paragraph(f"<b>{data.get('name', '[User Name]')}</b>", styles['HeaderInfo']))
-    elements.append(Paragraph(f"{data.get('phone', '[Phone Number]')}", styles['HeaderInfo']))
-    elements.append(Paragraph(f"{data.get('email', '[Email Address]')}", styles['HeaderInfo']))
-    elements.append(Paragraph(f"{data.get('address', '[Address]')}", styles['HeaderInfo']))
+    name = data.get('complainantName') or data.get('name', '[User Name]')
+    phone = data.get('complainantPhone') or data.get('phone', '[Phone Number]')
+    email = data.get('complainantEmail') or data.get('email', '[Email Address]')
+    address_parts = [
+        data.get('complainantAddress'),
+        data.get('complainantCity'),
+        data.get('complainantState'),
+        data.get('complainantZip')
+    ]
+    address = ", ".join([p for p in address_parts if p]) or data.get('address', '[Address]')
+
+    elements.append(Paragraph(f"<b>{name}</b>", styles['HeaderInfo']))
+    elements.append(Paragraph(f"{phone}", styles['HeaderInfo']))
+    elements.append(Paragraph(f"{email}", styles['HeaderInfo']))
+    elements.append(Paragraph(f"{address}", styles['HeaderInfo']))
     
     today = datetime.now().strftime("%B %d, %Y")
     elements.append(Paragraph(f"{today}", styles['HeaderInfo']))
@@ -78,8 +89,8 @@ def generate_pdf(data: dict, output_path: str):
     elements.append(Spacer(1, 12))
     
     # 5. Intro & Incident Description
-    incident_date = data.get('incident_date', '[Incident Date]')
-    crime_type = data.get('crime_type', '[Crime Type]')
+    incident_date = data.get('incidentDate') or data.get('incident_date', '[Incident Date]')
+    crime_type = data.get('crimeType') or data.get('crime_type', '[Crime Type]')
     
     intro_text = (
         f"I am writing to formally complain about a cybercrime incident that occurred on <b>{incident_date}</b> "
@@ -88,7 +99,7 @@ def generate_pdf(data: dict, output_path: str):
     elements.append(Paragraph(intro_text, styles['ComplaintBodyText']))
     elements.append(Spacer(1, 12))
     
-    description = data.get('description', 'No description provided.')
+    description = data.get('incidentDescription') or data.get('description', 'No description provided.')
     elements.append(Paragraph(f"{description}", styles['ComplaintBodyText']))
     elements.append(Spacer(1, 12))
     
@@ -98,7 +109,7 @@ def generate_pdf(data: dict, output_path: str):
         f"• Date and time of incident: {incident_date}",
         f"• Nature of cybercrime: {crime_type}",
         "• How the incident occurred: As described above",
-        f"• Impact on the victim: {data.get('description', 'N/A')[:100]}..."
+        f"• Impact on the victim: {data.get('impact') or data.get('description', 'N/A')[:100]}..."
     ]
     for detail in details:
         elements.append(Paragraph(detail, styles['Normal']))
@@ -111,7 +122,7 @@ def generate_pdf(data: dict, output_path: str):
     if data.get('evidence_url'):
         evidence_list.append("• Screenshot evidence uploaded")
     
-    transaction_id = data.get('transaction_id')
+    transaction_id = data.get('transactionId') or data.get('transaction_id')
     if transaction_id and transaction_id != "N/A":
         evidence_list.append(f"• Transaction details (ID: {transaction_id})")
     
@@ -127,7 +138,7 @@ def generate_pdf(data: dict, output_path: str):
     
     # 7. Suspect Information
     elements.append(Paragraph("<b>Suspect Information</b>", styles['SectionTitle']))
-    suspect_info = data.get('suspect_info', 'Unknown')
+    suspect_info = data.get('accusedName') or data.get('suspect_info', 'Unknown')
     elements.append(Paragraph(f"{suspect_info}", styles['Normal']))
     
     # 8. Conclusion
@@ -141,7 +152,7 @@ def generate_pdf(data: dict, output_path: str):
     elements.append(Spacer(1, 24))
     elements.append(Paragraph("Sincerely,", styles['Normal']))
     elements.append(Spacer(1, 12))
-    elements.append(Paragraph(f"<b>{data.get('name', '[User Name]')}</b>", styles['Normal']))
+    elements.append(Paragraph(f"<b>{name}</b>", styles['Normal']))
     
     # 10. Attachments
     elements.append(Spacer(1, 24))
