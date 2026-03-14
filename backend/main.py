@@ -95,7 +95,7 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
             supabase.storage.from_("complaint-reports").upload(
                 pdf_filename, 
                 f, 
-                file_options={"content-type": "application/pdf"}
+                file_options={"content_type": "application/pdf", "upsert": "true"}
             )
             
         pdf_url = supabase.storage.from_("complaint-reports").get_public_url(pdf_filename)
