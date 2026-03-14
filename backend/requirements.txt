@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+supabase
+python-dotenv
+python-multipart
+pytesseract
+pillow
+reportlab
+pydantic
