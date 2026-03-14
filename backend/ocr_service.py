@@ -36,37 +36,61 @@ def extract_indicators(text: str):
 def detect_crime_type(text: str) -> str:
     text_lower = text.lower()
     
-    phishing_keywords = ["verify account", "login", "password", "click here", "secure-login", "bank-login"]
-    financial_fraud_keywords = ["payment received", "credited", "transaction", "upi", "debit", "bank transfer"]
-    otp_scam_keywords = ["otp", "verification code", "don't share", "share otp"]
+    # Comprehensive keyword mapping for accurate detection
+    crime_patterns = {
+        "Phishing / Credential Theft": ["verify account", "login", "password", "click here", "secure-login", "bank-login", "suspended", "reactivate"],
+        "Financial Fraud / UPI Scam": ["payment received", "credited", "transaction", "upi", "debit", "bank transfer", "cashback", "lottery", "prize"],
+        "OTP / Authentication Scam": ["otp", "verification code", "don't share", "share otp", "one-time passcode", "auth code"],
+        "Identity Theft / Social Engineering": ["identity", "ssn", "passport", "impersonation", "friend in need", "official representative"],
+        "Ransomware / Digital Extortion": ["encrypted", "bitcoin", "payment for files", "locked", "decryption key"],
+        "Vishing / Smishing": ["call now", "authorized", "fraudulent activity", "urgent", "account blocked"]
+    }
     
-    if any(k in text_lower for k in phishing_keywords):
-        return "Phishing"
-    if any(k in text_lower for k in otp_scam_keywords):
-        return "OTP Scam"
-    if any(k in text_lower for k in financial_fraud_keywords):
-        return "Financial Fraud"
-    if "login" in text_lower or "bank" in text_lower:
-        return "Fake Website"
+    for crime, keywords in crime_patterns.items():
+        if any(k in text_lower for k in keywords):
+            return crime
     
-    return "Cybercrime"
+    return "Under-determined Cybercrime"
 
 def generate_ai_description(text: str, crime_type: str, indicators: dict) -> str:
     if not text:
-        return "No text could be extracted from the evidence."
+        return "Analysis inconclusive. No extractable text was identified within the provided evidence."
 
-    description = f"The evidence appears to be related to a {crime_type} attempt. "
-    
+    # Professional ChatGPT-like structured response
+    description = (
+        f"### Executive Summary\n"
+        f"Based on an automated forensic analysis of the provided evidence, the incident has been classified as **{crime_type}**. "
+        f"The content exhibits classic indicators of malicious intent, specifically targeting sensitive user data or financial assets.\n\n"
+        
+        f"### Technical Indicators Extracted\n"
+    )
+
     if indicators["urls"]:
-        description += f"A suspicious link was detected: {indicators['urls'][0]}. "
+        description += f"- **Malicious URL(s)**: Detected `{indicators['urls'][0]}`. This link likely directs to a credential-harvesting site.\n"
     
     if indicators["phones"]:
-        description += f"A contact number {indicators['phones'][0]} was identified in the evidence. "
+        description += f"- **Perpetrator Contact**: Identified `{indicators['phones'][0]}` as a primary point of contact for the solicitation.\n"
         
-    if "bank" in text.lower() or "account" in text.lower():
-        description += "The message impersonates a financial institution to gain trust. "
-        
-    description += f"\n\nFull text analysis: \"{text[:200]}...\""
+    if indicators["upi_ids"]:
+        description += f"- **Payment Handle**: Identified `{indicators['upi_ids'][0]}` as a potential destination for fraudulent funds.\n"
+
+    description += (
+        f"\n### Forensic Narrative\n"
+        f"The evidence contains phrasing such as \"{text[:100]}...\" "
+        f"This language is designed to create a sense of urgency or fear (e.g., account suspension or unauthorized access) to manipulate the recipient into bypassing standard security protocols. "
+    )
+
+    if "otp" in text.lower():
+        description += "The presence of an OTP solicitation suggest an active attempt to bypass Multi-Factor Authentication (MFA).\n"
+    elif "bank" in text.lower() or "transaction" in text.lower():
+        description += "The communication impersonates a formal financial institution to lend legitimacy to the fraudulent request.\n"
+
+    description += (
+        "\n### Recommended Action\n"
+        "1. Do not engage with the sender or click any associated links.\n"
+        "2. Block the initiating contact immediately.\n"
+        "3. Report this incident to your financial service provider if institutions were impersonated."
+    )
     
     return description
 
