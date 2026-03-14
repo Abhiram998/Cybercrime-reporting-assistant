@@ -60,6 +60,10 @@ const complaints = [
     accusedContact: "spoofed@bank-security.fake",
     accusedDetails: "Email originated from what appeared to be a legitimate bank domain but was actually a spoofed address.",
     evidenceDescription: "Screenshots of phishing email, fake website, bank statements showing unauthorized transactions",
+    ocr_text: "BANK ALERT: Your account has been suspended. Please login at http://secure-bank-verify.com to reactivate.",
+    detected_urls: "http://secure-bank-verify.com",
+    detected_contacts: "Unknown",
+    auto_generated_description: "The evidence describes a phishing attempt where the victim received a fraudulent bank alert and was directed to a malicious URL (secure-bank-verify.com) to capture credentials.",
     status: "Under Review",
     date: "2024-03-10",
   },
@@ -473,13 +477,46 @@ export default function DashboardPage() {
                                     </div>
                                   </div>
 
-                                  {/* Evidence */}
-                                  <div className="space-y-3">
-                                    <h4 className="font-semibold text-foreground">Evidence</h4>
-                                    <div className="text-sm">
-                                      <p className="text-foreground leading-relaxed">{complaint.evidenceDescription}</p>
-                                    </div>
-                                  </div>
+                                   {/* Evidence */}
+                                   <div className="space-y-3">
+                                     <h4 className="font-semibold text-foreground">Evidence</h4>
+                                     <div className="text-sm">
+                                       <p className="text-foreground leading-relaxed">{complaint.evidenceDescription}</p>
+                                     </div>
+                                   </div>
+
+                                   {/* AI Evidence Analysis */}
+                                   {(complaint as any).ocr_text && (
+                                     <div className="space-y-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                                       <h4 className="font-semibold text-primary flex items-center gap-2">
+                                         <Badge variant="outline" className="text-[10px] h-4">AI Analysis</Badge>
+                                         Evidence Insights
+                                       </h4>
+                                       
+                                       { (complaint as any).auto_generated_description && (
+                                         <div className="text-sm">
+                                           <p className="text-muted-foreground mb-1 font-medium italic">AI Summary</p>
+                                           <p className="text-foreground leading-relaxed">{(complaint as any).auto_generated_description}</p>
+                                         </div>
+                                       )}
+
+                                       { (complaint as any).ocr_text && (
+                                         <div className="text-sm">
+                                           <p className="text-muted-foreground mb-1 font-medium">Extracted Text</p>
+                                           <div className="p-2 rounded bg-background/50 border border-border text-xs font-mono whitespace-pre-wrap">
+                                             {(complaint as any).ocr_text}
+                                           </div>
+                                         </div>
+                                       )}
+
+                                       { (complaint as any).detected_urls && (
+                                         <div className="text-sm">
+                                           <p className="text-muted-foreground mb-1 font-medium">Flagged URLs</p>
+                                           <p className="text-destructive font-mono truncate text-xs">{(complaint as any).detected_urls}</p>
+                                         </div>
+                                       )}
+                                     </div>
+                                   )}
 
                                   {/* Download Button */}
                                   <Button

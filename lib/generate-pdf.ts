@@ -26,6 +26,9 @@ interface FormData {
   accusedContact: string
   accusedDetails: string
   evidenceDescription: string
+  ocr_text?: string
+  detected_urls?: string
+  auto_generated_description?: string
 }
 
 export async function generateComplaintPDF(formData: FormData, complaintId: string) {
@@ -167,6 +170,26 @@ export async function generateComplaintPDF(formData: FormData, complaintId: stri
     y = addWrappedText("• Forensic analysis reports (if available)", margin + 5, y, contentWidth - 5)
   }
   y += 5
+
+  // AI Evidence Analysis Section (New)
+  if (formData.ocr_text || formData.auto_generated_description) {
+    doc.setFont("helvetica", "bold")
+    doc.text("AI Evidence Analysis:", margin, y)
+    y += 7
+    doc.setFont("helvetica", "normal")
+    
+    if (formData.auto_generated_description) {
+      y = addWrappedText(`• AI Summary: ${formData.auto_generated_description}`, margin + 5, y, contentWidth - 5)
+    }
+    if (formData.detected_urls) {
+      y = addWrappedText(`• Detected Suspicious URLs: ${formData.detected_urls}`, margin + 5, y, contentWidth - 5)
+    }
+    if (formData.ocr_text) {
+      y = addWrappedText("• Extracted Text from Evidence:", margin + 5, y, contentWidth - 5)
+      y = addWrappedText(formData.ocr_text, margin + 10, y, contentWidth - 10)
+    }
+    y += 5
+  }
 
   // Section 3: Identification of parties
   doc.setFont("helvetica", "bold")

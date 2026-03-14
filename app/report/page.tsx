@@ -107,6 +107,7 @@ export default function ReportPage() {
     detected_urls: "",
     detected_contacts: "",
     evidence_image_url: "",
+    auto_generated_description: "",
   })
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
@@ -196,6 +197,10 @@ export default function ReportPage() {
 
         if (data.image_url) {
           updated.evidence_image_url = data.image_url
+        }
+
+        if (data.description) {
+          updated.auto_generated_description = data.description
         }
         
         return updated

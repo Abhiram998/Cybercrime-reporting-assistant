@@ -86,6 +86,11 @@ async def submit_complaint(complaint: schemas.ComplaintCreate):
             "incident_date": complaint_dict.get("incidentDate", complaint_dict.get("incident_date")),
             "suspect_info": complaint_dict.get("accusedName", complaint_dict.get("suspect_info")),
             "transaction_id": complaint_dict.get("transactionId", complaint_dict.get("transaction_id")),
+            "ocr_text": complaint_dict.get("ocr_text"),
+            "detected_urls": complaint_dict.get("detected_urls"),
+            "detected_contacts": complaint_dict.get("detected_contacts"),
+            "evidence_image_url": complaint_dict.get("evidence_image_url"),
+            "auto_generated_description": complaint_dict.get("auto_generated_description"),
         }
         
         # Remove None values to avoid overwriting defaults

@@ -42,6 +42,7 @@ class ComplaintBase(BaseModel):
     ocr_text: Optional[str] = None
     detected_urls: Optional[str] = None
     detected_contacts: Optional[str] = None
+    auto_generated_description: Optional[str] = None
     
     # Existing compatibility fields (can be mapped or kept)
     name: Optional[str] = None
