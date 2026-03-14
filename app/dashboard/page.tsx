@@ -31,8 +31,43 @@ import {
 } from "@/components/ui/dialog"
 import { generateComplaintPDF } from "@/lib/generate-pdf"
 
+interface Complaint {
+  id: string
+  complainantName: string
+  complainantPhone: string
+  complainantEmail: string
+  complainantAddress: string
+  complainantCity: string
+  complainantState: string
+  complainantZip: string
+  recipientName: string
+  recipientTitle: string
+  recipientOrganization: string
+  recipientAddress: string
+  recipientCity: string
+  recipientState: string
+  recipientZip: string
+  crimeType: string
+  incidentDate: string
+  incidentTime: string
+  incidentLocation: string
+  incidentDescription: string
+  methodUsed: string
+  impact: string
+  accusedName: string
+  accusedContact: string
+  accusedDetails: string
+  evidenceDescription: string
+  ocr_text?: string
+  detected_urls?: string
+  detected_contacts?: string
+  auto_generated_description?: string
+  status: string
+  date: string
+}
+
 // Sample data matching the new complaint format
-const complaints = [
+const complaints: Complaint[] = [
   {
     id: "CYB-A1B2C3",
     complainantName: "John Smith",
@@ -246,7 +281,7 @@ export default function DashboardPage() {
     })
   }, [searchQuery, selectedCrimeType])
 
-  const handleDownload = async (complaint: typeof complaints[0]) => {
+  const handleDownload = async (complaint: Complaint) => {
     setDownloadingId(complaint.id)
     try {
       await generateComplaintPDF({

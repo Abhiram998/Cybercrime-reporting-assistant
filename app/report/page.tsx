@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { FileText, Upload, X, AlertCircle, CheckCircle2, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,7 +32,7 @@ const crimeTypes = [
   "Other",
 ]
 
-interface FormData {
+interface ComplaintForm {
   // Complainant Information
   complainantName: string
   complainantPhone: string
@@ -67,17 +67,40 @@ interface FormData {
   
   // Evidence
   evidenceDescription: string
+  
+  // AI Analysis Fields
+  ocr_text?: string
+  detected_urls?: string
+  detected_contacts?: string
+  evidence_image_url?: string
+  auto_generated_description?: string
 }
 
 interface SubmissionResult {
   complaintId: string
   crimeType: string
   date: string
-  formData: FormData
+  formData: ComplaintForm
+}
+
+interface AnalysisResult {
+  crime_type: string
+  description: string
+  suspect_contact: string
+  image_url: string
+  ocr_text: string
+  indicators: {
+    urls: string[]
+    phones: string[]
+    emails: string[]
+    upi_ids: string[]
+    transaction_ids: string[]
+    otp_codes: string[]
+  }
 }
 
 export default function ReportPage() {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ComplaintForm>({
     complainantName: "",
     complainantPhone: "",
     complainantEmail: "",
@@ -119,14 +142,14 @@ export default function ReportPage() {
   
   // AI Analysis States
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set())
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData((prev: ComplaintForm) => ({ ...prev, [name]: value }))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,13 +186,13 @@ export default function ReportPage() {
 
       if (!response.ok) throw new Error("Analysis failed")
 
-      const data = await response.json()
+      const data: AnalysisResult = await response.json()
       setAnalysisResult(data)
 
       // Auto-fill form fields
       const filled = new Set<string>()
       
-      setFormData(prev => {
+      setFormData((prev: ComplaintForm) => {
         const updated = { ...prev }
         
         if (data.crime_type && data.crime_type !== "Cybercrime") {
@@ -215,8 +238,8 @@ export default function ReportPage() {
   }
 
   const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
-    setPreviews((prev) => prev.filter((_, i) => i !== index))
+    setFiles((prev: File[]) => prev.filter((_, i) => i !== index))
+    setPreviews((prev: string[]) => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -639,7 +662,7 @@ export default function ReportPage() {
                   <Select
                     value={formData.crimeType}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, crimeType: value }))
+                      setFormData((prev: ComplaintForm) => ({ ...prev, crimeType: value }))
                     }
                     required
                   >
