@@ -35,15 +35,6 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/dashboard"
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Info className="h-4 w-4" />
-                  View Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/upload"
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                 >

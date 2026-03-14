@@ -54,12 +54,6 @@ export default function HomePage() {
                   Report Cybercrime
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base">
-                <Link href="/dashboard">
-                  <Eye className="mr-2 h-5 w-5" />
-                  View Complaints
-                </Link>
-              </Button>
             </div>
           </div>
         </div>
