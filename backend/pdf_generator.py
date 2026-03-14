@@ -154,6 +154,34 @@ def generate_pdf(data: dict, output_path: str):
     elements.append(Spacer(1, 12))
     elements.append(Paragraph(f"<b>{name}</b>", styles['Normal']))
     
+    # 9a. Evidence Analysis Section (New)
+    if data.get('ocr_text') or data.get('crime_type'):
+        elements.append(Paragraph("<b>Evidence Analysis</b>", styles['SectionTitle']))
+        elements.append(Paragraph("--------------------------------", styles['Normal']))
+        
+        if data.get('ocr_text'):
+            elements.append(Paragraph("<b>Extracted Text from Evidence:</b>", styles['Normal']))
+            elements.append(Paragraph(data.get('ocr_text'), styles['ComplaintBodyText']))
+            elements.append(Spacer(1, 12))
+            
+        crime_type_detected = data.get('crimeType') or data.get('crime_type', 'Cybercrime')
+        elements.append(Paragraph(f"<b>Detected Cybercrime Type:</b> {crime_type_detected}", styles['Normal']))
+        
+        # Detected Indicators (simulated from description or raw markers if available)
+        indicators = []
+        if "http" in (data.get('ocr_text') or "").lower():
+            indicators.append("• Suspicious URL detected")
+        if data.get('accusedContact') and data.get('accusedContact') != "Unknown":
+            indicators.append(f"• Suspect contact identified: {data.get('accusedContact')}")
+            
+        if indicators:
+            elements.append(Paragraph("<b>Detected Indicators:</b>", styles['Normal']))
+            for ind in indicators:
+                elements.append(Paragraph(ind, styles['Normal']))
+        
+        elements.append(Paragraph("--------------------------------", styles['Normal']))
+        elements.append(Spacer(1, 12))
+
     # 10. Attachments
     elements.append(Spacer(1, 24))
     elements.append(Paragraph("<b>Attachments</b>", styles['SectionTitle']))

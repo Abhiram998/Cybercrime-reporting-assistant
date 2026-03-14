@@ -38,6 +38,10 @@ class ComplaintBase(BaseModel):
     
     # Evidence
     evidenceDescription: Optional[str] = None
+    evidence_image_url: Optional[str] = None
+    ocr_text: Optional[str] = None
+    detected_urls: Optional[str] = None
+    detected_contacts: Optional[str] = None
     
     # Existing compatibility fields (can be mapped or kept)
     name: Optional[str] = None

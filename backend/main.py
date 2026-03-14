@@ -42,24 +42,25 @@ async def upload_image(file: UploadFile = File(...)):
     with open(local_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # OCR Processing
-    extracted_text = ocr_service.extract_text_from_image(local_path)
+    # Evidence Analysis (OCR + AI Detection)
+    analysis_results = ocr_service.analyze_evidence(local_path)
     
     # Upload to Supabase Storage: evidence-images
     try:
         with open(local_path, "rb") as f:
             storage_path = unique_filename
-            supabase.storage.from_("evidence-images").upload(storage_path, f)
+            supabase.storage.from_("evidence-images").upload(
+                storage_path, 
+                f,
+                file_options={"content_type": file.content_type}
+            )
             
         # Get public URL
         image_url = supabase.storage.from_("evidence-images").get_public_url(storage_path)
         
-        # Cleanup local file (optional, keeping for now)
-        # os.remove(local_path)
-        
         return {
             "image_url": image_url,
-            "extracted_text": extracted_text
+            **analysis_results
         }
     except Exception as e:
         print(f"Upload Error: {e}")

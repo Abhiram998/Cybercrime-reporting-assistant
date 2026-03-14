@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import { generateComplaintPDF } from "@/lib/generate-pdf"
 
 const crimeTypes = [
@@ -102,6 +103,10 @@ export default function ReportPage() {
     accusedContact: "",
     accusedDetails: "",
     evidenceDescription: "",
+    ocr_text: "",
+    detected_urls: "",
+    detected_contacts: "",
+    evidence_image_url: "",
   })
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
@@ -110,6 +115,11 @@ export default function ReportPage() {
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null)
   const [backendPdfUrl, setBackendPdfUrl] = useState<string | null>(null)
+  
+  // AI Analysis States
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set())
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -121,7 +131,8 @@ export default function ReportPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
     if (selectedFiles.length > 0) {
-      setFiles((prev) => [...prev, ...selectedFiles])
+      const newFiles = [...files, ...selectedFiles]
+      setFiles(newFiles)
       
       selectedFiles.forEach((file) => {
         const reader = new FileReader()
@@ -129,7 +140,72 @@ export default function ReportPage() {
           setPreviews((prev) => [...prev, reader.result as string])
         }
         reader.readAsDataURL(file)
+        
+        // Trigger AI Analysis for the first uploaded image
+        if (file.type.startsWith("image/")) {
+          handleAnalysis(file)
+        }
       })
+    }
+  }
+
+  const handleAnalysis = async (file: File) => {
+    setIsAnalyzing(true)
+    const formDataUpload = new FormData()
+    formDataUpload.append("file", file)
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/upload-image`, {
+        method: "POST",
+        body: formDataUpload,
+      })
+
+      if (!response.ok) throw new Error("Analysis failed")
+
+      const data = await response.json()
+      setAnalysisResult(data)
+
+      // Auto-fill form fields
+      const filled = new Set<string>()
+      
+      setFormData(prev => {
+        const updated = { ...prev }
+        
+        if (data.crime_type && data.crime_type !== "Cybercrime") {
+          updated.crimeType = data.crime_type
+          filled.add("crimeType")
+        }
+        
+        if (data.description) {
+          updated.incidentDescription = data.description
+          filled.add("incidentDescription")
+        }
+        
+        if (data.suspect_contact && data.suspect_contact !== "Unknown") {
+          updated.accusedContact = data.suspect_contact
+          filled.add("accusedContact")
+        }
+
+        if (data.ocr_text) {
+          updated.ocr_text = data.ocr_text
+          updated.detected_urls = data.indicators.urls.join(", ")
+          updated.detected_contacts = data.suspect_contact
+          updated.evidenceDescription = `Extracted Text from Evidence:\n${data.ocr_text}\n\nDetected Indicators:\n${data.indicators.urls.map((u: string) => `• URL: ${u}`).join("\n")}`
+          filled.add("evidenceDescription")
+        }
+
+        if (data.image_url) {
+          updated.evidence_image_url = data.image_url
+        }
+        
+        return updated
+      })
+
+      setAiFilledFields(filled)
+    } catch (error) {
+      console.error("Analysis error:", error)
+    } finally {
+      setIsAnalyzing(false)
     }
   }
 
@@ -576,15 +652,28 @@ export default function ReportPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="incidentDescription">Description of Incident *</Label>
+                  <Label htmlFor="incidentDescription" className="flex items-center gap-2">
+                    Description of Incident *
+                    {aiFilledFields.has("incidentDescription") && (
+                      <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] py-0">AI Filled</Badge>
+                    )}
+                  </Label>
                   <Textarea
                     id="incidentDescription"
                     name="incidentDescription"
                     placeholder="Provide a detailed account of the cyber crime incident..."
                     rows={5}
                     value={formData.incidentDescription}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e)
+                      setAiFilledFields(prev => {
+                        const next = new Set(prev)
+                        next.delete("incidentDescription")
+                        return next
+                      })
+                    }}
                     required
+                    className={aiFilledFields.has("incidentDescription") ? "border-primary/50 bg-primary/5" : ""}
                   />
                 </div>
 
@@ -729,6 +818,48 @@ export default function ReportPage() {
                         </div>
                       ))}
                     </div>
+                  )}
+
+                  {isAnalyzing && (
+                    <div className="mt-4 p-4 rounded-lg bg-primary/5 border border-primary/20 animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm font-medium text-primary">AI is analyzing your evidence...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisResult && !isAnalyzing && (
+                    <Card className="mt-4 border-primary/20 bg-primary/5">
+                      <CardHeader className="py-3 px-4">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
+                          Evidence Analysis Complete
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-0 px-4 pb-4 space-y-3">
+                        <div className="text-xs">
+                          <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Detected Crime Type</p>
+                          <Badge variant="outline" className="border-primary/30 text-primary">{analysisResult.crime_type}</Badge>
+                        </div>
+                        
+                        {analysisResult.indicators.urls.length > 0 && (
+                          <div className="text-xs">
+                            <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Detected Suspicious URLs</p>
+                            <ul className="space-y-1">
+                              {analysisResult.indicators.urls.map((url: string, i: number) => (
+                                <li key={i} className="text-destructive font-mono truncate">{url}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <div className="text-xs">
+                          <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Extracted Insights</p>
+                          <p className="text-foreground leading-relaxed italic">"{analysisResult.description.split("\n\n")[0]}"</p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
                 </div>
               </div>

@@ -20,7 +20,11 @@ CREATE TABLE complaints (
   transaction_id TEXT,
   incident_date TIMESTAMP WITH TIME ZONE,
   evidence_url TEXT,
+  evidence_image_url TEXT,
   ocr_text TEXT,
+  detected_urls TEXT,
+  detected_contacts TEXT,
+  auto_generated_description TEXT,
   pdf_url TEXT,
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
