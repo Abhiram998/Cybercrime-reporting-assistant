@@ -45,7 +45,7 @@ def generate_pdf(data: dict, output_path: str):
     ))
     
     styles.add(ParagraphStyle(
-        name='BodyText',
+        name='ComplaintBodyText',
         parent=styles['Normal'],
         fontSize=11,
         leading=14,
@@ -85,11 +85,11 @@ def generate_pdf(data: dict, output_path: str):
         f"I am writing to formally complain about a cybercrime incident that occurred on <b>{incident_date}</b> "
         f"involving <b>{crime_type}</b>."
     )
-    elements.append(Paragraph(intro_text, styles['BodyText']))
+    elements.append(Paragraph(intro_text, styles['ComplaintBodyText']))
     elements.append(Spacer(1, 12))
     
     description = data.get('description', 'No description provided.')
-    elements.append(Paragraph(f"{description}", styles['BodyText']))
+    elements.append(Paragraph(f"{description}", styles['ComplaintBodyText']))
     elements.append(Spacer(1, 12))
     
     # Details Bullet Points
@@ -134,7 +134,7 @@ def generate_pdf(data: dict, output_path: str):
     elements.append(Paragraph("<b>Conclusion</b>", styles['SectionTitle']))
     elements.append(Paragraph(
         "I respectfully request the authorities to investigate this matter and take appropriate action.",
-        styles['BodyText']
+        styles['ComplaintBodyText']
     ))
     
     # 9. Closing
