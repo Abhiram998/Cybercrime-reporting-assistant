@@ -81,8 +81,17 @@ Return the output in STRICT JSON format with these exact keys:
 """
 
     try:
-        response = model.generate_content(prompt)
-        
+        try:
+            response = model.generate_content(prompt)
+        except Exception as inner_e:
+            # If 1.5-flash fails specifically with a 404 (NotFound), try gemini-pro
+            if "404" in str(inner_e) or "NotFound" in str(inner_e):
+                print("Gemini 1.5 Flash failed (404). Retrying with gemini-pro...")
+                fallback_model = genai.GenerativeModel('gemini-pro')
+                response = fallback_model.generate_content(prompt)
+            else:
+                raise inner_e
+
         # Handle cases where the response might be blocked by safety filters
         if not response.candidates or not response.candidates[0].content.parts:
              print(f"AI Warning: Response was blocked or empty. Safety Ratings: {response.prompt_feedback}")
