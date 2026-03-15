@@ -224,59 +224,63 @@ export default function ReportPage() {
       setFormData((prev: ComplaintForm) => {
         const updated = { ...prev }
         
-        if (data.crime_type && data.crime_type !== "Cybercrime" && data.crime_type !== "Data Format Error") {
+        // CRITICAL: Ensure crime_type is a string before normalization
+        const rawCrimeType = typeof data.crime_type === 'string' ? data.crime_type : String(data.crime_type || "");
+
+        if (rawCrimeType && rawCrimeType !== "Cybercrime" && rawCrimeType !== "Data Format Error" && rawCrimeType !== "[object Object]") {
           // Normalize crime type to match our predefined list or default to "Other"
-          const normalizedCrimeType = crimeTypes.includes(data.crime_type) 
-            ? data.crime_type 
-            : (crimeTypes.find(t => data.crime_type.toLowerCase().includes(t.toLowerCase())) || "Other");
+          const normalizedCrimeType = crimeTypes.includes(rawCrimeType) 
+            ? rawCrimeType 
+            : (crimeTypes.find(t => rawCrimeType.toLowerCase().includes(t.toLowerCase())) || "Other");
           
           updated.crimeType = normalizedCrimeType
           filled.add("crimeType")
         }
         
         if (data.incident_overview) {
-          updated.incidentDescription = data.incident_overview
+          updated.incidentDescription = typeof data.incident_overview === 'string' ? data.incident_overview : JSON.stringify(data.incident_overview)
           filled.add("incidentDescription")
         }
         
         if (data.methods_used) {
-          updated.methodUsed = data.methods_used
+          updated.methodUsed = typeof data.methods_used === 'string' ? data.methods_used : JSON.stringify(data.methods_used)
           filled.add("methodUsed")
         }
 
         if (data.impact) {
-          updated.impact = data.impact
+          updated.impact = typeof data.impact === 'string' ? data.impact : JSON.stringify(data.impact)
           filled.add("impact")
         }
         
-        if (data.suspect_contact && data.suspect_contact !== "Unknown") {
-          updated.accusedContact = data.suspect_contact
+        const rawSuspectContact = typeof data.suspect_contact === 'string' ? data.suspect_contact : String(data.suspect_contact || "");
+        if (rawSuspectContact && rawSuspectContact !== "Unknown" && rawSuspectContact !== "[object Object]") {
+          updated.accusedContact = rawSuspectContact
           filled.add("accusedContact")
         }
 
         if (data.ocr_text) {
-          updated.ocr_text = data.ocr_text
-          if (data.indicators?.urls) {
-            updated.detected_urls = data.indicators.urls.join(", ")
+          updated.ocr_text = typeof data.ocr_text === 'string' ? data.ocr_text : JSON.stringify(data.ocr_text)
+          if (data.indicators?.urls && Array.isArray(data.indicators.urls)) {
+            updated.detected_urls = data.indicators.urls.map(u => String(u)).join(", ")
           }
-          updated.detected_contacts = data.suspect_contact || ""
+          updated.detected_contacts = rawSuspectContact || ""
           filled.add("ocr_text")
         }
 
         // Fill new forensic fields with safe fallbacks
-        updated.incident_overview = data.incident_overview || ""
-        updated.methods_used = data.methods_used || ""
-        updated.indicators_list = data.indicators_list || []
-        updated.evidence_observed = data.evidence_observed || []
-        updated.timeline = data.timeline || []
-        updated.url_threats = (data as any).url_threats || []
+        updated.incident_overview = (typeof data.incident_overview === 'string' ? data.incident_overview : JSON.stringify(data.incident_overview)) || ""
+        updated.methods_used = (typeof data.methods_used === 'string' ? data.methods_used : JSON.stringify(data.methods_used)) || ""
+        updated.indicators_list = Array.isArray(data.indicators_list) ? data.indicators_list.map(i => typeof i === 'object' ? JSON.stringify(i) : String(i)) : []
+        updated.evidence_observed = Array.isArray(data.evidence_observed) ? data.evidence_observed.map(e => typeof e === 'object' ? JSON.stringify(e) : String(e)) : []
+        updated.timeline = Array.isArray(data.timeline) ? data.timeline.map(t => typeof t === 'object' ? JSON.stringify(t) : String(t)) : []
+        updated.url_threats = Array.isArray((data as any).url_threats) ? (data as any).url_threats : []
 
         if (data.image_url) {
-          updated.evidence_image_url = data.image_url
+          updated.evidence_image_url = String(data.image_url)
         }
 
         if (data.description) {
-          updated.auto_generated_description = data.description
+          updated.auto_generated_description = typeof data.description === 'string' ? data.description : JSON.stringify(data.description)
         }
         
         return updated
@@ -524,7 +528,7 @@ export default function ReportPage() {
                     </div>
                     <div>
                       <Label className="text-accent">Incident Overview</Label>
-                      <p className="text-sm leading-relaxed">{analysisResult.incident_overview}</p>
+                      <p className="text-sm leading-relaxed">{typeof analysisResult.incident_overview === 'object' ? JSON.stringify(analysisResult.incident_overview) : analysisResult.incident_overview}</p>
                     </div>
                   </div>
                   
@@ -538,7 +542,7 @@ export default function ReportPage() {
                       <div className="mt-1 flex flex-wrap gap-2">
                         {Array.isArray(analysisResult?.indicators_list) && analysisResult.indicators_list.map((ind, i) => (
                           <Badge key={i} variant="secondary" className="bg-accent/10 font-normal">
-                            {ind}
+                            {typeof ind === 'object' ? JSON.stringify(ind) : String(ind)}
                           </Badge>
                         ))}
                       </div>
@@ -557,7 +561,7 @@ export default function ReportPage() {
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold text-accent">
                             {i + 1}
                           </span>
-                          <p className="text-muted-foreground">{step}</p>
+                          <p className="text-muted-foreground">{typeof step === 'object' ? JSON.stringify(step) : String(step)}</p>
                         </div>
                       ))}
                     </div>
@@ -1034,8 +1038,8 @@ export default function ReportPage() {
                           <div className="text-xs">
                             <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Detected Suspicious URLs</p>
                             <ul className="space-y-1">
-                              {Array.isArray(analysisResult?.indicators?.urls) && analysisResult.indicators.urls.map((url: string, i: number) => (
-                                <li key={i} className="text-destructive font-mono truncate">{url}</li>
+                              {Array.isArray(analysisResult?.indicators?.urls) && analysisResult.indicators.urls.map((url: any, i: number) => (
+                                <li key={i} className="text-destructive font-mono truncate">{typeof url === 'object' ? JSON.stringify(url) : String(url)}</li>
                               ))}
                             </ul>
                           </div>
@@ -1043,7 +1047,10 @@ export default function ReportPage() {
 
                         <div className="text-xs">
                           <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Extracted Insights</p>
-                          <p className="text-foreground leading-relaxed italic">"{analysisResult?.description?.split("\n\n")[0] || analysisResult?.incident_overview?.split("\n\n")[0] || "No summary available."}"</p>
+                          <p className="text-foreground leading-relaxed italic">
+                            "{typeof analysisResult?.description === 'string' ? analysisResult.description.split("\n\n")[0] : 
+                              (typeof analysisResult?.incident_overview === 'string' ? analysisResult.incident_overview.split("\n\n")[0] : "No summary available.")}"
+                          </p>
                         </div>
                       </CardContent>
                     </Card>
