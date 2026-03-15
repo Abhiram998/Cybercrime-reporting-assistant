@@ -536,7 +536,7 @@ export default function ReportPage() {
                     <div>
                       <Label className="text-accent">Detected Indicators</Label>
                       <div className="mt-1 flex flex-wrap gap-2">
-                        {analysisResult.indicators_list?.map((ind, i) => (
+                        {Array.isArray(analysisResult?.indicators_list) && analysisResult.indicators_list.map((ind, i) => (
                           <Badge key={i} variant="secondary" className="bg-accent/10 font-normal">
                             {ind}
                           </Badge>
@@ -552,7 +552,7 @@ export default function ReportPage() {
                   <div>
                     <h4 className="mb-3 font-semibold text-accent">Incident Timeline</h4>
                     <div className="space-y-3">
-                      {analysisResult.timeline?.map((step, i) => (
+                      {Array.isArray(analysisResult?.timeline) && analysisResult.timeline.map((step, i) => (
                         <div key={i} className="flex gap-3 text-sm">
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold text-accent">
                             {i + 1}
@@ -566,7 +566,7 @@ export default function ReportPage() {
                   <div>
                     <h4 className="mb-3 font-semibold text-accent">URL Threat Analysis</h4>
                     <div className="space-y-3">
-                      {analysisResult?.url_threats?.map((ut, i) => (
+                      {Array.isArray(analysisResult?.url_threats) && analysisResult.url_threats.map((ut, i) => (
                         <div key={i} className="rounded border border-border bg-card p-3 text-xs">
                           <div className="flex items-center justify-between mb-1">
                             <span className="truncate font-mono font-medium max-w-[150px]">{ut?.url || "Unknown URL"}</span>
@@ -1034,7 +1034,7 @@ export default function ReportPage() {
                           <div className="text-xs">
                             <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Detected Suspicious URLs</p>
                             <ul className="space-y-1">
-                              {analysisResult.indicators.urls.map((url: string, i: number) => (
+                              {Array.isArray(analysisResult?.indicators?.urls) && analysisResult.indicators.urls.map((url: string, i: number) => (
                                 <li key={i} className="text-destructive font-mono truncate">{url}</li>
                               ))}
                             </ul>
