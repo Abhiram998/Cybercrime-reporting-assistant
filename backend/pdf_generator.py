@@ -144,8 +144,21 @@ def generate_pdf(data: dict, output_path: str):
     
     # --- 6. INCIDENT DESCRIPTION ---
     elements.append(Paragraph("Incident Description", styles['SectionHeader']))
-    description = data.get('incidentDescription') or data.get('description', 'No detailed description provided.')
-    elements.append(Paragraph(description, styles['BodyTextJP']))
+    raw_desc = data.get('incidentDescription') or data.get('description', 'No detailed description provided.')
+    
+    # Split by newlines and render each block as a paragraph
+    # Detect lines that look like subheadings (short lines ending with :)
+    for block in raw_desc.split('\n'):
+        if not block.strip(): continue
+        
+        # Heuristic for subheading: short and ends with colon
+        if len(block) < 70 and block.strip().endswith(':'):
+             elements.append(Paragraph(f"<b>{block.strip()}</b>", styles['Normal']))
+             elements.append(Spacer(1, 4))
+        else:
+             elements.append(Paragraph(block.strip(), styles['BodyTextJP']))
+             elements.append(Spacer(1, 8))
+    
     elements.append(Spacer(1, 12))
     
     # --- 7. FORENSIC EVIDENCE ANALYSIS ---
