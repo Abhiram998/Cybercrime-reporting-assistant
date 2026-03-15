@@ -224,8 +224,13 @@ export default function ReportPage() {
       setFormData((prev: ComplaintForm) => {
         const updated = { ...prev }
         
-        if (data.crime_type && data.crime_type !== "Cybercrime") {
-          updated.crimeType = data.crime_type
+        if (data.crime_type && data.crime_type !== "Cybercrime" && data.crime_type !== "Data Format Error") {
+          // Normalize crime type to match our predefined list or default to "Other"
+          const normalizedCrimeType = crimeTypes.includes(data.crime_type) 
+            ? data.crime_type 
+            : (crimeTypes.find(t => data.crime_type.toLowerCase().includes(t.toLowerCase())) || "Other");
+          
+          updated.crimeType = normalizedCrimeType
           filled.add("crimeType")
         }
         
@@ -258,7 +263,7 @@ export default function ReportPage() {
           filled.add("ocr_text")
         }
 
-        // Fill new forensic fields
+        // Fill new forensic fields with safe fallbacks
         updated.incident_overview = data.incident_overview || ""
         updated.methods_used = data.methods_used || ""
         updated.indicators_list = data.indicators_list || []
@@ -561,21 +566,21 @@ export default function ReportPage() {
                   <div>
                     <h4 className="mb-3 font-semibold text-accent">URL Threat Analysis</h4>
                     <div className="space-y-3">
-                      {analysisResult.url_threats?.map((ut, i) => (
+                      {analysisResult?.url_threats?.map((ut, i) => (
                         <div key={i} className="rounded border border-border bg-card p-3 text-xs">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="truncate font-mono font-medium max-w-[150px]">{ut.url}</span>
+                            <span className="truncate font-mono font-medium max-w-[150px]">{ut?.url || "Unknown URL"}</span>
                             <Badge className={
-                              ut.risk_level === "High" ? "bg-destructive text-destructive-foreground" : 
-                              ut.risk_level === "Medium" ? "bg-orange-500 text-white" : "bg-green-500 text-white"
+                              ut?.risk_level === "High" ? "bg-destructive text-destructive-foreground" : 
+                              ut?.risk_level === "Medium" ? "bg-orange-500 text-white" : "bg-green-500 text-white"
                             }>
-                              {ut.risk_level} Risk
+                              {ut?.risk_level || "Unknown"} Risk
                             </Badge>
                           </div>
-                          <p className="text-muted-foreground italic">{ut.category}</p>
+                          <p className="text-muted-foreground italic">{ut?.category || "Analyzing..."}</p>
                         </div>
                       ))}
-                      {analysisResult.url_threats?.length === 0 && (
+                      {(!analysisResult?.url_threats || analysisResult.url_threats.length === 0) && (
                         <p className="text-xs text-muted-foreground italic">No suspicious URLs detected in evidence.</p>
                       )}
                     </div>
