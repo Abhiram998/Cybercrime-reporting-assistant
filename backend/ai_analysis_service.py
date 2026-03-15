@@ -56,23 +56,24 @@ Return ONLY a valid JSON object.
 """
 
     # Try different model names in sequence until one works (based on discovery logs)
+    # Prioritizing 'latest' aliases and 'lite' models which often have better free quotas
     models_to_try = [
         'gemini-2.0-flash',
         'gemini-flash-latest',
-        'gemini-2.5-flash',
+        'gemini-pro-latest',
         'gemini-2.0-flash-lite',
-        'gemini-pro-latest'
+        'gemini-1.5-flash'
     ]
     
     response = None
     last_error = "No models available"
+    import time
 
     for model_name in models_to_try:
         try:
             print(f"Attempting analysis with {model_name}...")
             target_model = genai.GenerativeModel(model_name)
             response = target_model.generate_content(prompt)
-            # If we got here without exception, check if response is valid
             if response:
                 break
         except Exception as e:
@@ -80,15 +81,20 @@ Return ONLY a valid JSON object.
             if "404" in last_error or "NotFound" in last_error:
                 print(f"{model_name} not found. Trying next...")
                 continue
+            elif "429" in last_error or "quota" in last_error.lower():
+                print(f"Quota exceeded for {model_name}. Waiting 1s and trying next...")
+                time.sleep(1) # Small breather
+                continue
             else:
                 print(f"Critical error with {model_name}: {last_error}")
                 break
 
-    if not response:
+    if not response or last_error and "quota" in last_error.lower() and not response:
         return {
-            "crime_type": "Model Error",
-            "incident_overview": f"All Gemini models failed. Last error: {last_error}",
-            "evidence_observed": [], "timeline": []
+            "crime_type": "Rate Limited",
+            "incident_overview": "The AI is currently receiving too many requests. This is a temporary limit on the Google Free Tier. Please wait 1-2 minutes and try uploading again. Your OCR data is safe.",
+            "evidence_observed": ["Google API Quota Exceeded"],
+            "methods_used": "N/A", "indicators": [], "impact": "N/A", "recommended_action": "Retry in 2 minutes.", "timeline": []
         }
 
     try:
