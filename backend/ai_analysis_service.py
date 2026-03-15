@@ -103,24 +103,36 @@ Return ONLY a valid JSON object.
              print(f"AI Warning: Response was blocked. Safety Feedback: {response.prompt_feedback}")
              return {
                 "crime_type": "Content Blocked",
-                "incident_overview": "The AI could not analyze this evidence because it triggered a safety filter. This often happens with explicit or sensitive evidence text.",
+                "incident_overview": "The AI could not analyze this evidence because it triggered a safety filter.",
                 "evidence_observed": [], "methods_used": "N/A", "indicators": [], "impact": "N/A", "recommended_action": "N/A", "timeline": []
              }
 
         text_response = response.text
         
-        # Extract JSON from response
-        json_match = re.search(r'(\{.*?\})', text_response, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group(1))
+        # Robust JSON extraction: Find content between first { and last }
+        first_brace = text_response.find('{')
+        last_brace = text_response.rfind('}')
+        
+        if first_brace != -1 and last_brace != -1:
+            json_str = text_response[first_brace:last_brace+1]
+            try:
+                # Clean common AI-added invalid characters/formatting
+                json_str = re.sub(r',\s*}', '}', json_str) # Remove trailing commas
+                return json.loads(json_str)
+            except json.JSONDecodeError as e:
+                print(f"Sub-JSON Parse Error: {e}")
+                # Fallback: try removing common markdown or commentary artifacts if present
+                clean_json_str = re.sub(r'//.*', '', json_str) # Remove comments
+                return json.loads(clean_json_str)
         
         return json.loads(text_response)
     except Exception as e:
         print(f"Final AI Processing Error: {str(e)}")
+        print(f"Raw text that failed: {text_response[:500]}...")
         return {
             "error": "Failed to parse AI response",
-            "crime_type": "Processing Failure",
-            "incident_overview": "The AI provided a response, but it could not be processed into a report format."
+            "crime_type": "Data Format Error",
+            "incident_overview": "The AI analysis succeeded but the data format was slightly corrupted. Please try again."
         }
 
 def analyze_url(url: str):
