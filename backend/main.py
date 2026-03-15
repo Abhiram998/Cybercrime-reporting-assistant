@@ -3,11 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import shutil
 import uuid
-from datetime import datetime
 from typing import List
 
-from .supabase_client import supabase
-from . import schemas, ocr_service, pdf_generator
+try:
+    from backend.supabase_client import supabase
+    from backend import schemas, ocr_service, pdf_generator
+except ImportError:
+    # Fallback for different run environments
+    from .supabase_client import supabase
+    from . import schemas, ocr_service, pdf_generator
 
 app = FastAPI(title="Cybercrime Reporting API (Supabase)")
 
@@ -90,6 +94,7 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
             "detected_urls": complaint_dict.get("detected_urls"),
             "detected_contacts": complaint_dict.get("detected_contacts"),
             "evidence_image_url": complaint_dict.get("evidence_image_url"),
+            "evidence_url": complaint_dict.get("evidence_image_url"),
             "auto_generated_description": complaint_dict.get("auto_generated_description"),
         }
         
@@ -115,7 +120,7 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
         pdf_payload['complaint_id'] = complaint_uuid
         # We need to ensure we have the correct data for PDF
         pdf_payload['ocr_text'] = db_complaint.get('ocr_text', '')
-        pdf_payload['evidence_url'] = db_complaint.get('evidence_url', '')
+        pdf_payload['evidence_url'] = db_complaint.get('evidence_url', '') or db_complaint.get('evidence_image_url', '')
         
         pdf_generator.generate_pdf(pdf_payload, local_pdf_path)
         
@@ -124,7 +129,7 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
             supabase.storage.from_("complaint-reports").upload(
                 pdf_filename, 
                 f, 
-                file_options={"content-type": "application/pdf", "upsert": "true"}
+                file_options={"content-type": "application/pdf", "upsert": True}
             )
             
         # Use our own download endpoint for the PDF URL to guarantee headers
@@ -156,7 +161,6 @@ async def get_complaints():
 
 @app.get("/download-complaint/{complaint_id}")
 async def download_complaint(complaint_id: str):
-    from fastapi.responses import Response
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase client not initialized")
         

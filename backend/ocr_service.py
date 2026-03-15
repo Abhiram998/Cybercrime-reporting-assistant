@@ -1,6 +1,5 @@
 import pytesseract
 import re
-import os
 from PIL import Image
 
 def extract_text_from_image(image_path: str) -> str:
@@ -56,40 +55,71 @@ def generate_ai_description(text: str, crime_type: str, indicators: dict) -> str
     if not text:
         return "Analysis inconclusive. No extractable text was identified within the provided evidence."
 
+    # Identify potential scam themes from text
+    text_lower = text.lower()
+    scam_theme = "Unspecified Cybercrime"
+    if any(k in text_lower for k in ["package", "delivery", "tracking", "courier"]):
+        scam_theme = "Logistics/Delivery Scam (Smishing)"
+    elif any(k in text_lower for k in ["bank", "account", "transaction", "upi", "kyc", "card"]):
+        scam_theme = "Financial/Banking Fraud"
+    elif any(k in text_lower for k in ["login", "password", "verify", "secure", "locked"]):
+        scam_theme = "Credential Harvesting / Phishing"
+    elif any(k in text_lower for k in ["job", "work from home", "salary", "commission", "task"]):
+        scam_theme = "Employment/Task-based Fraud"
+    elif any(k in text_lower for k in ["lottery", "prize", "won", "reward", "congratulations"]):
+        scam_theme = "Advance Fee / Lottery Scam"
+
     # Professional ChatGPT-like structured response
     description = (
         f"### Executive Summary\n"
-        f"Based on an automated forensic analysis of the provided evidence, the incident has been classified as **{crime_type}**. "
-        f"The content exhibits classic indicators of malicious intent, specifically targeting sensitive user data or financial assets.\n\n"
+        f"The forensic analysis of the submitted evidence identifies this incident as a **{crime_type}**, specifically following the pattern of a **{scam_theme}**. "
+        f"The perpetrator is utilizing sophisticated social engineering tactics to deceive the recipient into performing unauthorized actions or disclosing sensitive information.\n\n"
         
         f"### Technical Indicators Extracted\n"
     )
 
+    has_indicators = False
     if indicators["urls"]:
-        description += f"- **Malicious URL(s)**: Detected `{indicators['urls'][0]}`. This link likely directs to a credential-harvesting site.\n"
+        description += f"- **Malicious Linkages**: The system detected suspicious URL(s): `{', '.join(indicators['urls'][:2])}`. These domains are frequently associated with phishing proxies and data exfiltration sites.\n"
+        has_indicators = True
     
     if indicators["phones"]:
-        description += f"- **Perpetrator Contact**: Identified `{indicators['phones'][0]}` as a primary point of contact for the solicitation.\n"
+        description += f"- **Source Identifier**: The communication originated from or references `{indicators['phones'][0]}`, which serves as the primary vector for this solicitation.\n"
+        has_indicators = True
         
     if indicators["upi_ids"]:
-        description += f"- **Payment Handle**: Identified `{indicators['upi_ids'][0]}` as a potential destination for fraudulent funds.\n"
+        description += f"- **Fraudulent Financial Handle**: The evidence identifies the UPI ID `{indicators['upi_ids'][0]}` as a potential collection point for illicit funds.\n"
+        has_indicators = True
 
+    if not has_indicators:
+        description += "- No explicit technical indicators (URLs/Phones) were uniquely isolated, but the textual pattern remains highly suspicious.\n"
+
+    # Extract a meaningful snippet instead of just the start
+    clean_text: str = str(text).replace('\n', ' ').strip()
+    if len(clean_text) > 150:
+        clean_snippet = clean_text[:150] + "..."
+    else:
+        clean_snippet = clean_text
+    
     description += (
-        f"\n### Forensic Narrative\n"
-        f"The evidence contains phrasing such as \"{text[:100]}...\" "
-        f"This language is designed to create a sense of urgency or fear (e.g., account suspension or unauthorized access) to manipulate the recipient into bypassing standard security protocols. "
+        f"\n### Forensic Narrative & Modus Operandi\n"
+        f"The evidence presents a structured attempt to manipulate the victim. Analysis of the communication (e.g., *\"{clean_snippet}\"*) reveals several psychological triggers:\n"
+        f"1. **Manufactured Urgency**: Using words like 'URGENT', 'immediately', or 'last warning' to bypass critical thinking.\n"
+        f"2. **Impersonation**: The attacker mimics a legitimate service provider to build a false sense of trust.\n"
+        f"3. **Call to Action**: Directing the victim to an external link or requesting confidential data (like OTPs or login credentials).\n"
     )
 
-    if "otp" in text.lower():
-        description += "The presence of an OTP solicitation suggest an active attempt to bypass Multi-Factor Authentication (MFA).\n"
-    elif "bank" in text.lower() or "transaction" in text.lower():
-        description += "The communication impersonates a formal financial institution to lend legitimacy to the fraudulent request.\n"
+    if "otp" in text_lower:
+        description += "\n**Critical Risk**: The request for an OTP indicates an attempt to breach Multi-Factor Authentication (MFA), which could lead to complete account takeover.\n"
+    elif "bank" in text_lower or "card" in text_lower:
+        description += "\n**Financial Risk**: The communication targets financial assets directly, posing a significant risk of monetary loss through unauthorized transactions.\n"
 
     description += (
-        "\n### Recommended Action\n"
-        "1. Do not engage with the sender or click any associated links.\n"
-        "2. Block the initiating contact immediately.\n"
-        "3. Report this incident to your financial service provider if institutions were impersonated."
+        "\n### Recommended Defensive Actions\n"
+        "1. **Cease Communication**: Do not interact with the sender or follow any embedded instructions.\n"
+        "2. **Verify Independently**: If you suspect the claim might be real, contact the organization directly using their official, verified contact details found on their website.\n"
+        "3. **Technical Hygiene**: Clear browser cookies if a suspicious link was clicked and update passwords for related accounts immediately using a separate, secure device.\n"
+        "4. **Reporting**: Flag the message as spam/phishing within your messaging app and report any financial discrepancies to your bank's fraud department within the 24-hour golden window."
     )
     
     return description

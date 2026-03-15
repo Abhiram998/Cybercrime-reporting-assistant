@@ -25,7 +25,7 @@ interface FormData {
   accusedName: string
   accusedContact: string
   accusedDetails: string
-  evidenceDescription: string
+  evidenceDescription?: string
   ocr_text?: string
   detected_urls?: string
   auto_generated_description?: string

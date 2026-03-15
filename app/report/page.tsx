@@ -65,8 +65,8 @@ interface ComplaintForm {
   accusedContact: string
   accusedDetails: string
   
-  // Evidence
-  evidenceDescription: string
+  // Evidence (Optional)
+  evidenceDescription?: string
   
   // AI Analysis Fields
   ocr_text?: string
@@ -125,7 +125,6 @@ export default function ReportPage() {
     accusedName: "",
     accusedContact: "",
     accusedDetails: "",
-    evidenceDescription: "",
     ocr_text: "",
     detected_urls: "",
     detected_contacts: "",
@@ -214,8 +213,7 @@ export default function ReportPage() {
           updated.ocr_text = data.ocr_text
           updated.detected_urls = data.indicators.urls.join(", ")
           updated.detected_contacts = data.suspect_contact
-          updated.evidenceDescription = `Extracted Text from Evidence:\n${data.ocr_text}\n\nDetected Indicators:\n${data.indicators.urls.map((u: string) => `• URL: ${u}`).join("\n")}`
-          filled.add("evidenceDescription")
+          filled.add("ocr_text")
         }
 
         if (data.image_url) {
@@ -329,7 +327,6 @@ export default function ReportPage() {
       accusedName: "",
       accusedContact: "",
       accusedDetails: "",
-      evidenceDescription: "",
     })
     setFiles([])
     setPreviews([])
@@ -781,17 +778,7 @@ export default function ReportPage() {
                 </div>
                 <Separator />
 
-                <div className="space-y-2">
-                  <Label htmlFor="evidenceDescription">Description of Evidence</Label>
-                  <Textarea
-                    id="evidenceDescription"
-                    name="evidenceDescription"
-                    placeholder="List any evidence you have (screenshots, emails, transaction records, log files, etc.)..."
-                    rows={3}
-                    value={formData.evidenceDescription}
-                    onChange={handleInputChange}
-                  />
-                </div>
+
 
                 <div className="space-y-2">
                   <Label>Upload Evidence Files</Label>
