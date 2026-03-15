@@ -10,4 +10,4 @@ pydantic
 pillow-heif
 requests
 sqlalchemy
-google-generativeai
+google-generativeai>=0.7.2

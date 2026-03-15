@@ -6,13 +6,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure Gemini
+# Configure Gemini with fallback
 api_key = os.getenv("GEMINI_API_KEY")
+model = None
+
 if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    model = None
+    try:
+        genai.configure(api_key=api_key)
+        # Try 1.5 Flash first, fallback to Pro if not found
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            # Test model availability
+            print("Gemini 1.5 Flash initialized.")
+        except Exception:
+            print("Gemini 1.5 Flash not available, falling back to Gemini Pro.")
+            model = genai.GenerativeModel('gemini-pro')
+    except Exception as e:
+        print(f"Gemini Configuration Error: {e}")
 
 def analyze_evidence(ocr_text: str):
     if not model:
