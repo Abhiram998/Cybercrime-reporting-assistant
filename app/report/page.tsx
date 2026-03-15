@@ -74,6 +74,18 @@ interface ComplaintForm {
   detected_contacts?: string
   evidence_image_url?: string
   auto_generated_description?: string
+  
+  // New Extended Analysis Fields
+  incident_overview?: string
+  methods_used?: string
+  indicators_list?: string[]
+  evidence_observed?: string[]
+  timeline?: string[]
+  url_threats?: {
+    url: string
+    risk_level: string
+    category: string
+  }[]
 }
 
 interface SubmissionResult {
@@ -86,6 +98,18 @@ interface SubmissionResult {
 interface AnalysisResult {
   crime_type: string
   description: string
+  incident_overview: string
+  methods_used: string
+  indicators_list: string[]
+  impact: string
+  recommended_action: string
+  evidence_observed: string[]
+  timeline: string[]
+  url_threats: {
+    url: string
+    risk_level: string
+    category: string
+  }[]
   suspect_contact: string
   image_url: string
   ocr_text: string
@@ -130,6 +154,12 @@ export default function ReportPage() {
     detected_contacts: "",
     evidence_image_url: "",
     auto_generated_description: "",
+    incident_overview: "",
+    methods_used: "",
+    indicators_list: [],
+    evidence_observed: [],
+    timeline: [],
+    url_threats: [],
   })
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
@@ -199,9 +229,19 @@ export default function ReportPage() {
           filled.add("crimeType")
         }
         
-        if (data.description) {
-          updated.incidentDescription = data.description
+        if (data.incident_overview) {
+          updated.incidentDescription = data.incident_overview
           filled.add("incidentDescription")
+        }
+        
+        if (data.methods_used) {
+          updated.methodUsed = data.methods_used
+          filled.add("methodUsed")
+        }
+
+        if (data.impact) {
+          updated.impact = data.impact
+          filled.add("impact")
         }
         
         if (data.suspect_contact && data.suspect_contact !== "Unknown") {
@@ -215,6 +255,14 @@ export default function ReportPage() {
           updated.detected_contacts = data.suspect_contact
           filled.add("ocr_text")
         }
+
+        // Fill new forensic fields
+        updated.incident_overview = data.incident_overview
+        updated.methods_used = data.methods_used
+        updated.indicators_list = data.indicators_list
+        updated.evidence_observed = data.evidence_observed
+        updated.timeline = data.timeline
+        updated.url_threats = data.url_threats
 
         if (data.image_url) {
           updated.evidence_image_url = data.image_url
@@ -430,7 +478,111 @@ export default function ReportPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* AI Analysis Panel */}
+            {isAnalyzing && (
+              <div className="mb-8 rounded-lg border border-accent/30 bg-accent/5 p-6 text-center">
+                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent" />
+                <h3 className="mb-2 text-lg font-semibold text-accent">AI Evidence Analysis in Progress...</h3>
+                <p className="text-sm text-muted-foreground">
+                  Our AI is extracting text, detecting crime patterns, and analyzing technical threats.
+                </p>
+              </div>
+            )}
+
+            {analysisResult && !isAnalyzing && (
+              <div className="mb-8 space-y-6 rounded-lg border border-accent/20 bg-accent/5 p-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-accent">Evidence Analysis Report</h3>
+                  <Badge variant="outline" className="border-accent text-accent">AI Generated</Badge>
+                </div>
+                
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-accent">Cybercrime Category</Label>
+                      <p className="text-lg font-semibold">{analysisResult.crime_type}</p>
+                    </div>
+                    <div>
+                      <Label className="text-accent">Incident Overview</Label>
+                      <p className="text-sm leading-relaxed">{analysisResult.incident_overview}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-accent">Methods Used</Label>
+                      <p className="text-sm">{analysisResult.methods_used}</p>
+                    </div>
+                    <div>
+                      <Label className="text-accent">Detected Indicators</Label>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {analysisResult.indicators_list?.map((ind, i) => (
+                          <Badge key={i} variant="secondary" className="bg-accent/10 font-normal">
+                            {ind}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="bg-accent/10" />
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <h4 className="mb-3 font-semibold text-accent">Incident Timeline</h4>
+                    <div className="space-y-3">
+                      {analysisResult.timeline?.map((step, i) => (
+                        <div key={i} className="flex gap-3 text-sm">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold text-accent">
+                            {i + 1}
+                          </span>
+                          <p className="text-muted-foreground">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="mb-3 font-semibold text-accent">URL Threat Analysis</h4>
+                    <div className="space-y-3">
+                      {analysisResult.url_threats?.map((ut, i) => (
+                        <div key={i} className="rounded border border-border bg-card p-3 text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="truncate font-mono font-medium max-w-[150px]">{ut.url}</span>
+                            <Badge className={
+                              ut.risk_level === "High" ? "bg-destructive text-destructive-foreground" : 
+                              ut.risk_level === "Medium" ? "bg-orange-500 text-white" : "bg-green-500 text-white"
+                            }>
+                              {ut.risk_level} Risk
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground italic">{ut.category}</p>
+                        </div>
+                      ))}
+                      {analysisResult.url_threats?.length === 0 && (
+                        <p className="text-xs text-muted-foreground italic">No suspicious URLs detected in evidence.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-md bg-accent/10 p-4 border border-accent/20">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-accent" />
+                    <div>
+                      <p className="text-sm font-medium text-accent">Auto-fill Complete</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        We've pre-filled the form with this analysis. Please review and edit the details before submitting.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-8">
+
               {/* Complainant Information */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">

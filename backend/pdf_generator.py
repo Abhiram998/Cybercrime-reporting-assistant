@@ -154,33 +154,61 @@ def generate_pdf(data: dict, output_path: str):
     elements.append(Spacer(1, 12))
     elements.append(Paragraph(f"<b>{name}</b>", styles['Normal']))
     
-    # 9a. Evidence Analysis Section (New)
+    # 9a. Comprehensive Evidence Analysis (Powered by AI)
     if data.get('ocr_text') or data.get('crime_type'):
-        elements.append(Paragraph("<b>Evidence Analysis</b>", styles['SectionTitle']))
-        elements.append(Paragraph("--------------------------------", styles['Normal']))
-        
-        if data.get('ocr_text'):
-            elements.append(Paragraph("<b>Extracted Text from Evidence:</b>", styles['Normal']))
-            elements.append(Paragraph(data.get('ocr_text'), styles['ComplaintBodyText']))
-            elements.append(Spacer(1, 12))
-            
-        crime_type_detected = data.get('crimeType') or data.get('crime_type', 'Cybercrime')
-        elements.append(Paragraph(f"<b>Detected Cybercrime Type:</b> {crime_type_detected}", styles['Normal']))
-        
-        # Detected Indicators (simulated from description or raw markers if available)
-        indicators = []
-        if "http" in (data.get('ocr_text') or "").lower():
-            indicators.append("• Suspicious URL detected")
-        if data.get('accusedContact') and data.get('accusedContact') != "Unknown":
-            indicators.append(f"• Suspect contact identified: {data.get('accusedContact')}")
-            
-        if indicators:
-            elements.append(Paragraph("<b>Detected Indicators:</b>", styles['Normal']))
-            for ind in indicators:
-                elements.append(Paragraph(ind, styles['Normal']))
-        
-        elements.append(Paragraph("--------------------------------", styles['Normal']))
+        elements.append(Paragraph("<b>ENCLOSURE: AI-POWERED EVIDENCE ANALYSIS</b>", styles['SectionTitle']))
+        elements.append(Paragraph("This section contains an automated forensic analysis of the submitted evidence.", styles['Normal']))
         elements.append(Spacer(1, 12))
+        
+        # 1. Incident Overview
+        elements.append(Paragraph("<b>1. Incident Overview:</b>", styles['Normal']))
+        overview = data.get('incident_overview') or data.get('description') or "N/A"
+        elements.append(Paragraph(overview, styles['ComplaintBodyText']))
+        elements.append(Spacer(1, 12))
+
+        # 2. Evidence Observed
+        evidence_observed = data.get('evidence_observed') or []
+        if evidence_observed:
+            elements.append(Paragraph("<b>2. Evidence Observed:</b>", styles['Normal']))
+            for item in evidence_observed:
+                elements.append(Paragraph(f"• {item}", styles['Normal']))
+            elements.append(Spacer(1, 12))
+
+        # 3. Methods Used
+        methods = data.get('methods_used') or data.get('methodUsed') or "N/A"
+        elements.append(Paragraph("<b>3. Methods Used by Perpetrators:</b>", styles['Normal']))
+        elements.append(Paragraph(methods, styles['ComplaintBodyText']))
+        elements.append(Spacer(1, 12))
+
+        # 4. Indicators of Malicious Activity
+        indicators_list = data.get('indicators_list') or []
+        if indicators_list:
+            elements.append(Paragraph("<b>4. Indicators of Malicious Activity:</b>", styles['Normal']))
+            for ind in indicators_list:
+                elements.append(Paragraph(f"• {ind}", styles['Normal']))
+            elements.append(Spacer(1, 12))
+
+        # 5. URL Threat Analysis
+        url_threats = data.get('url_threats') or []
+        if url_threats:
+            elements.append(Paragraph("<b>5. Suspicious URL Analysis:</b>", styles['Normal']))
+            for ut in url_threats:
+                elements.append(Paragraph(f"• <b>URL:</b> {ut['url']}", styles['Normal']))
+                elements.append(Paragraph(f"  <b>Risk Level:</b> {ut['risk_level']} | <b>Category:</b> {ut['category']}", styles['Normal']))
+            elements.append(Spacer(1, 12))
+
+        # 6. Incident Timeline
+        timeline = data.get('timeline') or []
+        if timeline:
+            elements.append(Paragraph("<b>6. Incident Timeline (Reconstructed):</b>", styles['Normal']))
+            for event in timeline:
+                elements.append(Paragraph(event, styles['Normal']))
+            elements.append(Spacer(1, 12))
+
+        elements.append(Paragraph("<b>7. Extracted OCR Text:</b>", styles['Normal']))
+        elements.append(Paragraph(data.get('ocr_text') or "N/A", styles['ComplaintBodyText']))
+        elements.append(Spacer(1, 24))
+
 
     # 10. Attachments
     elements.append(Spacer(1, 24))

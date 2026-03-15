@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import uuid
 
@@ -29,20 +29,30 @@ class ComplaintBase(BaseModel):
     crimeType: str
     incidentDescription: str
     methodUsed: Optional[str] = None
-    impact: str
+    impact: Optional[str] = None
     
     # Accused Information
     accusedName: Optional[str] = None
     accusedContact: Optional[str] = None
     accusedDetails: Optional[str] = None
     
-    # Evidence
+    # Evidence Analysis
     evidenceDescription: Optional[str] = None
     evidence_image_url: Optional[str] = None
     ocr_text: Optional[str] = None
     detected_urls: Optional[str] = None
     detected_contacts: Optional[str] = None
     auto_generated_description: Optional[str] = None
+    
+    # New Extended Analysis Fields
+    incident_overview: Optional[str] = None
+    methods_used: Optional[str] = None
+    indicators_list: Optional[List[str]] = None
+    impact: Optional[str] = None
+    evidence_observed: Optional[List[str]] = None
+    timeline: Optional[List[str]] = None
+    url_threats: Optional[List[dict]] = None
+
     
     # Existing compatibility fields (can be mapped or kept)
     name: Optional[str] = None

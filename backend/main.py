@@ -96,6 +96,15 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
             "evidence_image_url": complaint_dict.get("evidence_image_url"),
             "evidence_url": complaint_dict.get("evidence_image_url"),
             "auto_generated_description": complaint_dict.get("auto_generated_description"),
+            
+            # AI Analysis Fields for Report
+            "incident_overview": complaint_dict.get("incident_overview"),
+            "methods_used": complaint_dict.get("methods_used"),
+            "indicators_list": complaint_dict.get("indicators_list"),
+            "impact": complaint_dict.get("impact"),
+            "evidence_observed": complaint_dict.get("evidence_observed"),
+            "timeline": complaint_dict.get("timeline"),
+            "url_threats": complaint_dict.get("url_threats"),
         }
         
         # Remove None values to avoid overwriting defaults
@@ -118,9 +127,10 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
         
         pdf_payload = complaint.dict()
         pdf_payload['complaint_id'] = complaint_uuid
-        # We need to ensure we have the correct data for PDF
+        # Ensure AI fields are present for PDF generation
         pdf_payload['ocr_text'] = db_complaint.get('ocr_text', '')
         pdf_payload['evidence_url'] = db_complaint.get('evidence_url', '') or db_complaint.get('evidence_image_url', '')
+
         
         pdf_generator.generate_pdf(pdf_payload, local_pdf_path)
         
@@ -129,7 +139,7 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
             supabase.storage.from_("complaint-reports").upload(
                 pdf_filename, 
                 f, 
-                file_options={"content-type": "application/pdf", "upsert": True}
+                file_options={"content-type": "application/pdf", "upsert": "true"}
             )
             
         # Use our own download endpoint for the PDF URL to guarantee headers
