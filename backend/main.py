@@ -93,23 +93,23 @@ async def submit_complaint(request: Request, complaint: schemas.ComplaintCreate)
             "transaction_id": complaint_dict.get("transactionId", complaint_dict.get("transaction_id")),
             "ocr_text": complaint_dict.get("ocr_text"),
             "detected_urls": complaint_dict.get("detected_urls"),
-            "detected_contacts": complaint_dict.get("detected_contacts"),
-            "evidence_image_url": complaint_dict.get("evidence_image_url"),
-            "evidence_url": complaint_dict.get("evidence_image_url"),
-            "auto_generated_description": complaint_dict.get("auto_generated_description"),
+            "detected_contacts": complaint_dict.get("detected_contacts", ""),
+            "evidence_image_url": complaint_dict.get("evidence_image_url", ""),
+            "evidence_url": complaint_dict.get("evidence_image_url", ""),
+            "auto_generated_description": complaint_dict.get("auto_generated_description", ""),
             
             # AI Analysis Fields for Report
-            "incident_overview": complaint_dict.get("incident_overview"),
-            "methods_used": complaint_dict.get("methods_used"),
-            "indicators_list": complaint_dict.get("indicators_list"),
-            "impact": complaint_dict.get("impact"),
-            "evidence_observed": complaint_dict.get("evidence_observed"),
-            "timeline": complaint_dict.get("timeline"),
-            "url_threats": complaint_dict.get("url_threats"),
+            "incident_overview": complaint_dict.get("incident_overview", ""),
+            "methods_used": complaint_dict.get("methods_used", ""),
+            "indicators_list": complaint_dict.get("indicators_list", []),
+            "impact": complaint_dict.get("impact", ""),
+            "evidence_observed": complaint_dict.get("evidence_observed", []),
+            "timeline": complaint_dict.get("timeline", []),
+            "url_threats": complaint_dict.get("url_threats", []),
         }
         
-        # Remove None values to avoid overwriting defaults
-        insert_data = {k: v for k, v in mapped_data.items() if v is not None}
+        # Prepare data for insertion
+        insert_data = mapped_data
         
         # Add a placeholder for status if not present
         if "status" not in insert_data:
