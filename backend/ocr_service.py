@@ -1,28 +1,37 @@
-import easyocr
-import re
+import pytesseract
 from PIL import Image
-import numpy as np
-
-# Initialize EasyOCR Reader (English)
-reader = easyocr.Reader(['en'], gpu=False)
+import re
+import os
 
 def extract_text_from_image(image_path: str) -> str:
+    """
+    Extracts text from an image using Tesseract OCR.
+    Tesseract is much lighter on memory than EasyOCR/PyTorch.
+    """
     try:
-        # EasyOCR works better with numpy arrays or file paths
-        results = reader.readtext(image_path)
-        # Combine text from all detections
-        text = " ".join([res[1] for res in results])
+        if not os.path.exists(image_path):
+            print(f"Error: Image path does not exist: {image_path}")
+            return ""
+            
+        # Open image using PIL
+        img = Image.open(image_path)
+        
+        # Extract text
+        text = pytesseract.image_to_string(img)
         return text.strip()
     except Exception as e:
         print(f"OCR Error: {e}")
         return ""
 
 try:
-    from backend import ai_analysis_service
-except ImportError:
     from . import ai_analysis_service
+except ImportError:
+    import ai_analysis_service
 
 def extract_indicators(text: str):
+    """
+    Extracts technical indicators (URLs, Phones, Emails, etc.) from text using Regex.
+    """
     # Regex patterns
     urls = re.findall(r'https?://[^\s<>"]+|www\.[^\s<>"]+', text)
     phones = re.findall(r'(?:\+91|91|0)?[6-9]\d{9}', text)
@@ -41,10 +50,13 @@ def extract_indicators(text: str):
     }
 
 def analyze_evidence(image_path: str):
+    """
+    Orchestrates the full evidence analysis pipeline using memory-safe Tesseract.
+    """
     ocr_text = extract_text_from_image(image_path)
     indicators = extract_indicators(ocr_text)
     
-    # Run Deep AI Analysis
+    # Run Deep AI Analysis (Gemini API handles the heavy lifting off-server)
     ai_result = ai_analysis_service.analyze_evidence(ocr_text)
     
     # Analyze each URL for threat level
@@ -66,4 +78,3 @@ def analyze_evidence(image_path: str):
         "indicators": indicators,
         "suspect_contact": indicators["phones"][0] if indicators["phones"] else (indicators["emails"][0] if indicators["emails"] else "Unknown")
     }
-
