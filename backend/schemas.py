@@ -48,7 +48,6 @@ class ComplaintBase(BaseModel):
     incident_overview: Optional[str] = None
     methods_used: Optional[str] = None
     indicators_list: Optional[List[str]] = None
-    impact: Optional[str] = None
     evidence_observed: Optional[List[str]] = None
     timeline: Optional[List[str]] = None
     url_threats: Optional[List[dict]] = None

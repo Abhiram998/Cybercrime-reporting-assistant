@@ -6,12 +6,13 @@ import uuid
 from typing import List
 
 try:
-    from backend.supabase_client import supabase
-    from backend import schemas, ocr_service, pdf_generator
-except ImportError:
-    # Fallback for different run environments
-    from .supabase_client import supabase
     from . import schemas, ocr_service, pdf_generator
+    from .supabase_client import supabase
+except ImportError:
+    import schemas
+    import ocr_service
+    import pdf_generator
+    from supabase_client import supabase
 
 app = FastAPI(title="Cybercrime Reporting API (Supabase)")
 

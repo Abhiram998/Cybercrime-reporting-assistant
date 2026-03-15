@@ -251,18 +251,20 @@ export default function ReportPage() {
 
         if (data.ocr_text) {
           updated.ocr_text = data.ocr_text
-          updated.detected_urls = data.indicators.urls.join(", ")
-          updated.detected_contacts = data.suspect_contact
+          if (data.indicators?.urls) {
+            updated.detected_urls = data.indicators.urls.join(", ")
+          }
+          updated.detected_contacts = data.suspect_contact || ""
           filled.add("ocr_text")
         }
 
         // Fill new forensic fields
-        updated.incident_overview = data.incident_overview
-        updated.methods_used = data.methods_used
-        updated.indicators_list = data.indicators_list
-        updated.evidence_observed = data.evidence_observed
-        updated.timeline = data.timeline
-        updated.url_threats = data.url_threats
+        updated.incident_overview = data.incident_overview || ""
+        updated.methods_used = data.methods_used || ""
+        updated.indicators_list = data.indicators_list || []
+        updated.evidence_observed = data.evidence_observed || []
+        updated.timeline = data.timeline || []
+        updated.url_threats = (data as any).url_threats || []
 
         if (data.image_url) {
           updated.evidence_image_url = data.image_url
@@ -375,11 +377,24 @@ export default function ReportPage() {
       accusedName: "",
       accusedContact: "",
       accusedDetails: "",
+      ocr_text: "",
+      detected_urls: "",
+      detected_contacts: "",
+      evidence_image_url: "",
+      auto_generated_description: "",
+      incident_overview: "",
+      methods_used: "",
+      indicators_list: [],
+      evidence_observed: [],
+      timeline: [],
+      url_threats: [],
     })
     setFiles([])
     setPreviews([])
     setSubmitStatus("idle")
     setSubmissionResult(null)
+    setAnalysisResult(null)
+    setAiFilledFields(new Set())
   }
 
   if (submitStatus === "success" && submissionResult) {
@@ -1010,7 +1025,7 @@ export default function ReportPage() {
                           <Badge variant="outline" className="border-primary/30 text-primary">{analysisResult.crime_type}</Badge>
                         </div>
                         
-                        {analysisResult.indicators.urls.length > 0 && (
+                        {analysisResult?.indicators?.urls && analysisResult.indicators.urls.length > 0 && (
                           <div className="text-xs">
                             <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Detected Suspicious URLs</p>
                             <ul className="space-y-1">
@@ -1023,7 +1038,7 @@ export default function ReportPage() {
 
                         <div className="text-xs">
                           <p className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Extracted Insights</p>
-                          <p className="text-foreground leading-relaxed italic">"{analysisResult.description.split("\n\n")[0]}"</p>
+                          <p className="text-foreground leading-relaxed italic">"{analysisResult?.description?.split("\n\n")[0] || analysisResult?.incident_overview?.split("\n\n")[0] || "No summary available."}"</p>
                         </div>
                       </CardContent>
                     </Card>
