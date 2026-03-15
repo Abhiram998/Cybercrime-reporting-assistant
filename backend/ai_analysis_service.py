@@ -43,16 +43,28 @@ def analyze_evidence(ocr_text: str):
     except Exception as list_e:
         print(f"Could not list models: {list_e}")
 
-    prompt = f"""You are a cybersecurity investigation assistant.
-Analyze the following extracted text from suspected cybercrime evidence.
+    prompt = f"""You are a professional Cybercrime Forensic Investigator.
+Analyze the following extracted text from suspected cybercrime evidence and generate a comprehensive, highly detailed incident report.
 
 OCR Text:
 {ocr_text}
 
-Generate a structured cybercrime analysis with the following keys:
-"crime_type", "incident_overview", "evidence_observed", "methods_used", "indicators", "impact", "recommended_action", "timeline"
+Provide your analysis in a structured JSON format with the following keys:
+1. "crime_type": The specific category (e.g., Phishing, Financial Fraud).
+2. "incident_overview": A deep, multi-paragraph narrative (at least 200 words) describing the incident. Use the following internal subheadings within the text (each on a new line ending with a colon):
+   - Executive Summary:
+   - Modus Operandi:
+   - Technical Observations:
+   - Evidence of Intent:
+3. "evidence_observed": A list of specific items seen in the text.
+4. "methods_used": A technical summary of the attack vectors.
+5. "indicators": Lists of URLs, phone numbers, or emails found.
+6. "impact": Assessment of financial or data loss.
+7. "recommended_action": Steps the victim should take.
+8. "timeline": A chronological breakdown of the events.
 
-Return ONLY a valid JSON object.
+CRITICAL: The "incident_overview" must be professional, formal, and sufficiently detailed to be used in a police complaint.
+Return ONLY valid JSON.
 """
 
     # Try different model names in sequence until one works (based on discovery logs)
