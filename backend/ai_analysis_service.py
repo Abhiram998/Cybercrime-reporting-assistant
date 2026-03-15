@@ -25,76 +25,75 @@ if api_key:
         print(f"Gemini Configuration Error: {e}")
 
 def analyze_evidence(ocr_text: str):
+    # If initialization failed, we can't proceed
     if not model:
-        # Fallback if no API key is provided - returning a generic but structured mock
         return {
-            "crime_type": "Suspected Cybercrime",
-            "incident_overview": "Evidence contains suspicious communication patterns. (Check GEMINI_API_KEY in .env to enable detailed AI analysis)",
-            "evidence_observed": ["Suspicious text detected"],
-            "methods_used": "Social Engineering / Unknown",
-            "indicators": ["Grammar/Urgency cues"],
-            "impact": "Potential compromise of personal or financial data",
-            "recommended_action": "Do not click links. Block sender. Report to authorities.",
-            "timeline": [
-                "1. User received suspicious communication.",
-                "2. System detected potential malicious indicators in the text.",
-                "3. AI analysis flagged the event for further review."
-            ]
+            "crime_type": "Key Error",
+            "incident_overview": "GEMINI_API_KEY is missing or invalid. Please check Render Environment variables.",
+            "evidence_observed": [], "timeline": []
         }
 
-    prompt = f"""You are a cybersecurity investigation assistant.
+    # List available models to logs for debugging (only happens once)
+    try:
+        print("--- Available Gemini Models ---")
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                print(f"Model ID: {m.name}")
+        print("-------------------------------")
+    except Exception as list_e:
+        print(f"Could not list models: {list_e}")
 
+    prompt = f"""You are a cybersecurity investigation assistant.
 Analyze the following extracted text from suspected cybercrime evidence.
 
 OCR Text:
 {ocr_text}
 
-Generate a structured cybercrime analysis with the following sections:
-
-1. Cybercrime Category
-Identify the most likely cybercrime type. 
-Possible categories include: Phishing, Financial Fraud, OTP Scam, Identity Theft, Fake Payment Scam, Online Harassment.
-
-2. Incident Overview
-Provide a clear explanation of what appears to have happened.
-
-3. Evidence Observed
-List important elements detected in the evidence such as links, phone numbers, emails, transaction IDs, urgent phrases.
-
-4. Methods Used by the Attacker
-Explain how the attacker attempted the cybercrime.
-
-5. Indicators of Malicious Activity
-List suspicious characteristics detected in the message.
-
-6. Potential Impact on the Victim
-Explain possible consequences such as financial loss or credential theft.
-
-7. Recommended Action
-Suggest appropriate action such as reporting to cybercrime authorities.
-
-8. Incident Timeline
-Generate a chronological timeline of the suspected cybercrime events based on the text.
-
-Return the output in STRICT JSON format with these exact keys:
+Generate a structured cybercrime analysis with the following keys:
 "crime_type", "incident_overview", "evidence_observed", "methods_used", "indicators", "impact", "recommended_action", "timeline"
+
+Return ONLY a valid JSON object.
 """
 
-    try:
-        try:
-            response = model.generate_content(prompt)
-        except Exception as inner_e:
-            # If 1.5-flash fails specifically with a 404 (NotFound), try gemini-pro
-            if "404" in str(inner_e) or "NotFound" in str(inner_e):
-                print("Gemini 1.5 Flash failed (404). Retrying with gemini-pro...")
-                fallback_model = genai.GenerativeModel('gemini-pro')
-                response = fallback_model.generate_content(prompt)
-            else:
-                raise inner_e
+    # Try different model names in sequence until one works
+    models_to_try = [
+        'gemini-1.5-flash', 
+        'gemini-1.5-flash-latest', 
+        'gemini-pro', 
+        'gemini-1.0-pro'
+    ]
+    
+    response = None
+    last_error = "No models available"
 
+    for model_name in models_to_try:
+        try:
+            print(f"Attempting analysis with {model_name}...")
+            target_model = genai.GenerativeModel(model_name)
+            response = target_model.generate_content(prompt)
+            # If we got here without exception, check if response is valid
+            if response:
+                break
+        except Exception as e:
+            last_error = str(e)
+            if "404" in last_error or "NotFound" in last_error:
+                print(f"{model_name} not found. Trying next...")
+                continue
+            else:
+                print(f"Critical error with {model_name}: {last_error}")
+                break
+
+    if not response:
+        return {
+            "crime_type": "Model Error",
+            "incident_overview": f"All Gemini models failed. Last error: {last_error}",
+            "evidence_observed": [], "timeline": []
+        }
+
+    try:
         # Handle cases where the response might be blocked by safety filters
         if not response.candidates or not response.candidates[0].content.parts:
-             print(f"AI Warning: Response was blocked or empty. Safety Ratings: {response.prompt_feedback}")
+             print(f"AI Warning: Response was blocked. Safety Feedback: {response.prompt_feedback}")
              return {
                 "crime_type": "Content Blocked",
                 "incident_overview": "The AI could not analyze this evidence because it triggered a safety filter. This often happens with explicit or sensitive evidence text.",
@@ -103,21 +102,18 @@ Return the output in STRICT JSON format with these exact keys:
 
         text_response = response.text
         
-        # Extract JSON from response if it's wrapped in markdown code blocks
-        json_match = re.search(r'```json\s*(\{.*?\})\s*```', text_response, re.DOTALL)
-        if not json_match:
-            json_match = re.search(r'(\{.*?\})', text_response, re.DOTALL)
-            
+        # Extract JSON from response
+        json_match = re.search(r'(\{.*?\})', text_response, re.DOTALL)
         if json_match:
             return json.loads(json_match.group(1))
         
         return json.loads(text_response)
     except Exception as e:
-        print(f"AI Analysis Error: {type(e).__name__} - {str(e)}")
+        print(f"Final AI Processing Error: {str(e)}")
         return {
-            "error": f"AI Analysis failed: {type(e).__name__}",
-            "crime_type": "Processing Error",
-            "incident_overview": "The AI service encountered an error while analyzing the evidence. Please check the server logs for details."
+            "error": "Failed to parse AI response",
+            "crime_type": "Processing Failure",
+            "incident_overview": "The AI provided a response, but it could not be processed into a report format."
         }
 
 def analyze_url(url: str):
