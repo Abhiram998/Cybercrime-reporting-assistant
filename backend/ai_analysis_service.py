@@ -55,12 +55,13 @@ Generate a structured cybercrime analysis with the following keys:
 Return ONLY a valid JSON object.
 """
 
-    # Try different model names in sequence until one works
+    # Try different model names in sequence until one works (based on discovery logs)
     models_to_try = [
-        'gemini-1.5-flash', 
-        'gemini-1.5-flash-latest', 
-        'gemini-pro', 
-        'gemini-1.0-pro'
+        'gemini-2.0-flash',
+        'gemini-flash-latest',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-pro-latest'
     ]
     
     response = None
