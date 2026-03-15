@@ -157,26 +157,42 @@ def generate_pdf(data: dict, output_path: str):
         elements.append(Paragraph(f"<b>Analytical Summary:</b> {overview}", styles['BodyTextJP']))
         elements.append(Spacer(1, 10))
         
-        # Analysis Table
+        # Helper to wrap text for table cells
+        def wrap_cell(text):
+            return Paragraph(str(text), styles['TableBody'])
+
+        # Create TableBody style for wrapping
+        if 'TableBody' not in styles:
+            styles.add(ParagraphStyle(
+                name='TableBody',
+                parent=styles['Normal'],
+                fontSize=9,
+                leading=11,
+                alignment=0
+            ))
+
+        # Analysis Table with wrapped paragraphs
         analysis_data = [
-            ["Attribute", "Information Extracted"],
-            ["Detected Crime", crime_type],
-            ["Methods Used", data.get('methods_used') or data.get('methodUsed') or "N/A"],
-            ["Indicators Found", ", ".join(data.get('indicators_list', [])) or "None identified"],
-            ["Potential Impact", data.get('impact') or "N/A"]
+            [wrap_cell("<b>Attribute</b>"), wrap_cell("<b>Information Extracted</b>")],
+            [wrap_cell("Detected Crime"), wrap_cell(crime_type)],
+            [wrap_cell("Methods Used"), wrap_cell(data.get('methods_used') or data.get('methodUsed') or "N/A")],
+            [wrap_cell("Indicators Found"), wrap_cell(", ".join(data.get('indicators_list', [])) or "None identified")],
+            [wrap_cell("Potential Impact"), wrap_cell(data.get('impact') or "N/A")]
         ]
         
-        analysis_table = Table(analysis_data, colWidths=[120, 350])
+        analysis_table = Table(analysis_data, colWidths=[100, 360])
         analysis_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F9F9F9")),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ]))
         elements.append(analysis_table)
         elements.append(Spacer(1, 15))
@@ -217,10 +233,10 @@ def generate_pdf(data: dict, output_path: str):
     
     # --- 10. CLOSING & SIGNATURE ---
     elements.append(Paragraph("Yours Respectfully,", styles['Normal']))
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"<b>{name}</b>", styles['Normal']))
     elements.append(Paragraph(f"__________________________", styles['Normal']))
     elements.append(Paragraph(f"<b>(Signature)</b>", styles['Normal']))
-    elements.append(Paragraph(f"<b>{name}</b>", styles['Normal']))
     elements.append(Spacer(1, 40))
     
     # --- 11. ENCLOSURES / ATTACHMENTS ---
