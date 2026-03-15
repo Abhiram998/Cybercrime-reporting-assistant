@@ -3,10 +3,11 @@ uvicorn
 supabase
 python-dotenv
 python-multipart
-pytesseract
+easyocr
 pillow
 reportlab
 pydantic
 pillow-heif
 requests
 sqlalchemy
+google-generativeai
