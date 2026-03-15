@@ -72,19 +72,33 @@ Return the output in STRICT JSON format with these exact keys:
 
     try:
         response = model.generate_content(prompt)
+        
+        # Handle cases where the response might be blocked by safety filters
+        if not response.candidates or not response.candidates[0].content.parts:
+             print(f"AI Warning: Response was blocked or empty. Safety Ratings: {response.prompt_feedback}")
+             return {
+                "crime_type": "Content Blocked",
+                "incident_overview": "The AI could not analyze this evidence because it triggered a safety filter. This often happens with explicit or sensitive evidence text.",
+                "evidence_observed": [], "methods_used": "N/A", "indicators": [], "impact": "N/A", "recommended_action": "N/A", "timeline": []
+             }
+
         text_response = response.text
         
-        # Extract JSON from response if it's wrapped in markdown
-        json_match = re.search(r'\{.*\}', text_response, re.DOTALL)
+        # Extract JSON from response if it's wrapped in markdown code blocks
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', text_response, re.DOTALL)
+        if not json_match:
+            json_match = re.search(r'(\{.*?\})', text_response, re.DOTALL)
+            
         if json_match:
-            return json.loads(json_match.group())
+            return json.loads(json_match.group(1))
+        
         return json.loads(text_response)
     except Exception as e:
-        print(f"AI Analysis Error: {e}")
+        print(f"AI Analysis Error: {type(e).__name__} - {str(e)}")
         return {
-            "error": "Failed to analyze evidence with AI",
-            "crime_type": "Under-determined",
-            "incident_overview": "Error during AI processing."
+            "error": f"AI Analysis failed: {type(e).__name__}",
+            "crime_type": "Processing Error",
+            "incident_overview": "The AI service encountered an error while analyzing the evidence. Please check the server logs for details."
         }
 
 def analyze_url(url: str):
